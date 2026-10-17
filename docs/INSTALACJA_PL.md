@@ -14,7 +14,7 @@ Ustawienia typowej instalacji Galaxy S9:
 | Hasło | Z panelu Local Server |
 | Cloud Server | Wyłączony |
 
-Zalecana rezerwacja DHCP dla telefonu. **Nie wpisujemy IP na sztywno w skryptach instalacyjnych**: konfigurację można zmienić przez **Skonfiguruj ponownie** na karcie integracji (v1.0.0).
+Zalecana rezerwacja DHCP dla telefonu. **Nie wpisujemy IP na sztywno w skryptach instalacyjnych**: konfigurację można zmienić przez **Skonfiguruj ponownie** na karcie integracji (v1.0.1).
 
 ## 2. Home Assistant
 
@@ -102,9 +102,9 @@ Jeśli na telefonie jest ponad 10 000 rekordów danej kategorii, integracja zgł
 **Nie publikuj logów z hasłami, numerami ani treściami wiadomości.**
 
 
-## 8. Nowy panel SMS Bridge v1.0.0
+## 8. Nowy panel SMS Bridge v1.0.1
 
-Po aktualizacji integracji i restarcie HA w bocznym menu dostępny jest panel **SMS Bridge**. W **Templates** dodaj grupę odbiorców (numery w formacie `+48123123123`), następnie szablon tekstu, np. `ALERT: $device offline`, a potem wywołaj `smsgetaweybridge.send_template` w automatyzacji. **Logs** wyświetla lokalny dziennik bez treści SMS. **Overview** pozwala opcjonalnie skonfigurować callback HTTPS: potrzebny jest lokalny adres HTTPS i certyfikat zaufany przez telefon. Nie używaj publicznego internetu ani chmury.
+Po aktualizacji integracji i restarcie HA w bocznym menu dostępny jest panel **SMS Bridge**. W **Templates** dodaj grupę odbiorców (numery w formacie `+48123123123`), następnie szablon tekstu, np. `ALERT: $device offline`, a potem wybierz w automatyzacji osobną akcję **Send SMS: nazwa_szablonu** z prostymi polami zmiennych. **Logs** wyświetla lokalny dziennik bez treści SMS. **Overview** pozwala opcjonalnie skonfigurować callback HTTPS: potrzebny jest lokalny adres HTTPS i certyfikat zaufany przez telefon. Nie używaj publicznego internetu ani chmury.
 
 
 ## 9. Nowości 1.0.0: formularze automatyzacji i webhook automatyczny
@@ -112,3 +112,7 @@ Po aktualizacji integracji i restarcie HA w bocznym menu dostępny jest panel **
 W edytorze automatyzacji dostępne są `send_sms` i `send_template` z listą zapisanych szablonów. Wybór pokazuje nazwę grupy oraz listę wymaganych `$zmiennych`. Dodatkowo każdy szablon ma własną akcję z osobnymi polami tekstowymi tych zmiennych (najwygodniejsze rozwiązanie). Panel **SMS Bridge → Templates & Groups** pozwala edytować istniejące grupy i szablony oraz wyjaśnia składnię zmiennych.
 
 Po podaniu loginu i hasła Local Server bramka otrzyma automatyczną próbę rejestracji webhooków. Warunkiem jest skonfigurowany **wewnętrzny URL HTTPS** HA i certyfikat zaufany przez Android. Żadnych adresów webhooków się nie wkleja. Przy braku takiej konfiguracji status pokaże `unavailable_local_https`; polling nadal działa. **Nie** zmieniaj ustawień HTTPS bramki ani zapory w celu obchodzenia zabezpieczeń.
+
+## Wygodne automatyzacje v1.0.1 (bez JSON-a)
+
+W panelu **SMS Bridge → Templates & Groups** utwórz grupę z numerami i szablon, np. `server_alert` z treścią `Server $host is $status`. W edytorze automatyzacji wybierz osobną akcję **Send SMS: server_alert**. Zobaczysz podgląd zapisanej treści, grupę oraz osobne pola `host` i `status`. Uzupełnij zwykłe wartości, bez JSON-a, bez ponownego wpisywania numerów. Inne akcje to opcje zaawansowane. **Gateway entry (legacy) usunięto**; stary zapis `send_template` z `entry_id` lub samym kluczem szablonu wymaga aktualizacji.

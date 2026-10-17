@@ -16,7 +16,7 @@ from build_release import prepare_release  # noqa: E402
 class ReleaseTests(unittest.TestCase):
     def test_release_package_and_checksum(self):
         with tempfile.TemporaryDirectory() as folder:
-            archive, checksum, notes = prepare_release('v1.0.0', Path(folder))
+            archive, checksum, notes = prepare_release('v1.0.1', Path(folder))
             self.assertTrue(archive.exists())
             self.assertTrue(checksum.exists())
             self.assertTrue(notes.exists())
@@ -29,7 +29,7 @@ class ReleaseTests(unittest.TestCase):
                 self.assertFalse(any(name.startswith('tests/') for name in zipped.namelist()))
             content = checksum.read_text().strip()
             self.assertEqual(content, hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name)
-            self.assertIn('1.0.0', notes.read_text())
+            self.assertIn('1.0.1', notes.read_text())
 
     def test_version_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -53,6 +53,19 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn('[Polski]', readme)
         self.assertNotIn('TWOJ_LOGIN_GITHUB', readme)
         self.assertTrue((ROOT / 'docs/README_PL.md').exists())
+
+    def test_github_readme_starts_with_centered_project_icon_and_title(self):
+        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        self.assertTrue(readme.startswith('<p align="center">\n  <img src="custom_components/smsgetaweybridge/brand/icon.png"'))
+        self.assertLess(readme.index('<img src='), readme.index('<h1 align="center">smsGetaweyBridge</h1>'))
+        self.assertLess(readme.index('<h1 align="center">smsGetaweyBridge</h1>'), readme.index('[![Tests'))
+        self.assertIn('no JSON', readme)
+        self.assertIn('README_PL.md', readme)
+
+    def test_service_yaml_has_no_legacy_gateway_entry(self):
+        src = (ROOT / 'custom_components/smsgetaweybridge/services.yaml').read_text(encoding='utf-8')
+        self.assertNotIn('legacy', src.lower())
+        self.assertIn('Send SMS: template_name', src)
 
     def test_workflow_contains_tag_gate_and_validators(self):
         workflow = (ROOT / '.github/workflows/tests.yml').read_text()

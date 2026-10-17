@@ -38,11 +38,17 @@ def template_options(hass) -> list[dict[str, str]]:
     return options
 
 
+def _body_preview(body: str, max_length: int = 400) -> str:
+    """Show the literal saved message in an action description, not a rendered SMS."""
+    preview = body.strip().replace("\r", " ").replace("\n", " ")
+    return preview[:max_length] + ("…" if len(preview) > max_length else "")
+
+
 def _send_sms_description(hass) -> dict:
     options = template_options(hass)
     return {
         "name": "Send SMS (direct or saved template)",
-        "description": "Either enter a phone number and message, OR choose a saved template from the list. A template uses its saved recipient group.",
+        "description": "For one-off messages enter the number and message. For saved templates, use the simpler dedicated 'Send SMS: template_name' action: it shows the saved SMS text, group and individual variable fields. No JSON needed there.",
         "fields": {
             "phone_number": {"name": "Phone number (direct send)", "required": False,
                              "description": "For a one-off SMS. Leave blank when using a saved template.",
@@ -51,13 +57,13 @@ def _send_sms_description(hass) -> dict:
                         "description": "Message text for a one-off SMS. Leave blank when using a template.",
                         "selector": {"text": {"multiline": True}}},
             "template": {"name": "Saved template (optional)", "required": False,
-                         "description": "Choose a saved template; labels show group and required variables. If selected, direct-send fields are ignored.",
+                         "description": "Advanced use: choosing a template ignores direct-send fields. For an easy form without an object/JSON editor, select the separate 'Send SMS: template_name' action instead.",
                          "selector": {"select": {"options": options, "mode": "dropdown"}} if options else {"text": {}}},
             "variables": {"name": "Template variables", "required": False,
-                          "description": "Map of variable names/values shown in the template list. E.g. {host: nas, state: offline}.",
+                          "description": "Advanced only: a mapping of variable names to values. To avoid this mapping/JSON editor, use the separate 'Send SMS: template_name' action with individual text fields.",
                           "selector": {"object": {}}},
-            "entry_id": {"name": "Gateway entry", "required": False,
-                         "description": "Optional if only one gateway is connected or if the template is selected from the list.",
+            "entry_id": {"name": "Gateway for direct SMS", "required": False,
+                         "description": "Only needed for direct phone/message sends if multiple Android gateways are configured; a saved template already identifies its gateway.",
                          "selector": {"config_entry": {"integration": DOMAIN}}},
         },
     }
@@ -66,27 +72,21 @@ def _send_sms_description(hass) -> dict:
 def _send_template_description(hass) -> dict:
     options = template_options(hass)
     return {
-        "name": "Send saved SMS template (choose from list)",
-        "description": "Choose a template from the saved list. Its group and required $variables are shown in each option. SMS may be billed.",
+        "name": "Send saved SMS template (advanced)",
+        "description": "Select a saved template from the list. The SMS text and recipient group are saved in SMS Bridge → Templates & Groups; do not re-enter the message. This action uses an advanced variables mapping. To avoid JSON, choose the dedicated 'Send SMS: template_name' action with a separate text field for each variable. SMS may be billed.",
         "fields": {
             "template": {
                 "name": "Saved template",
-                "description": "Templates are created/edited in SMS Bridge → Templates. Each choice lists required variables.",
+                "description": "Choose a template made in SMS Bridge → Templates & Groups. The choice lists its group and required variables. For a preview of the SMS body and simpler fields, use 'Send SMS: template_name'.",
                 "required": True,
                 "selector": {"select": {"options": options, "mode": "dropdown"}} if options else {"text": {}},
             },
             "variables": {
                 "name": "Variables",
-                "description": "Enter a dictionary with the exact $variable names shown in the selected template, e.g. {entity: server, state: offline}. No variables needed if the choice says 'none'.",
+                "description": "Advanced mapping only. If the template needs $host and $status, enter keys host and status with their values. For normal form fields with no JSON, select 'Send SMS: template_name' instead. Leave blank for templates without variables.",
                 "required": False,
                 "example": {"entity": "server"},
                 "selector": {"object": {}},
-            },
-            "entry_id": {
-                "name": "Gateway entry (legacy)",
-                "description": "Optional for templates selected by ID; used with older plain template keys.",
-                "required": False,
-                "selector": {"config_entry": {"integration": DOMAIN}},
             },
         },
     }
@@ -128,14 +128,21 @@ async def update_template_actions(hass) -> None:
             fields = {
                 v: {
                     "name": v,
-                    "description": f"Required ${v} in the SMS body. Enter text or a Home Assistant template expression.",
+                    "description": f"Enter the value replacing ${v} in the saved SMS text. Example: 'offline' or a Home Assistant template like {{{{ states('sensor.example') }}}}. Do not enter JSON.",
                     "required": True,
                     "selector": {"text": {}},
                 } for v in variables
             }
+            preview = _body_preview(template["body"])
+            vars_desc = ", ".join("$" + v for v in variables) if variables else "none"
             async_set_service_schema(hass, DOMAIN, name, {
                 "name": f"Send SMS: {key}",
-                "description": f"Saved template '{key}' → recipient group '{template['group']}'. All required variables are separate fields. Sending SMS can incur charges.",
+                "description": (
+                    f"Saved SMS text: {preview} | Recipient group: {template['group']} | "
+                    f"Required variables: {vars_desc}. Fill in the fields below (no JSON). "
+                    "The recipient numbers and message text come from SMS Bridge → Templates & Groups. "
+                    "SMS can incur charges."
+                ),
                 "fields": fields,
             })
     for old in registered - wanted:

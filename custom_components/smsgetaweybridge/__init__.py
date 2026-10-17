@@ -32,7 +32,6 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 TEMPLATE_SCHEMA = vol.Schema({
     vol.Required("template"): cv.string,
     vol.Optional("variables", default={}): dict,
-    vol.Optional("entry_id"): cv.string,
 })
 
 SEND_SCHEMA = vol.Schema({
@@ -60,14 +59,23 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             return next(iter(coordinators.values()))
         raise ServiceValidationError("Specify entry_id if zero or multiple gateways are configured")
 
+    def selected_template(value: str):
+        """Resolve only stable entry-qualified template choices from the picker."""
+        if "::" not in value:
+            raise ServiceValidationError(
+                "Select a saved template from the list. Old unqualified template names "
+                "are no longer supported; use the dedicated 'Send SMS: template' action."
+            )
+        entry_id, key = value.split("::", 1)
+        if not entry_id or not key:
+            raise ServiceValidationError("Invalid template selection; choose from the saved list")
+        return target(entry_id), key
+
     async def send_sms(call: ServiceCall) -> None:
-        # Both actions show a live template list. A selected template always wins
-        # over direct phone/message fields (no accidental double-send).
+        # A selected template always wins over direct fields (no double-send).
         selected = (call.data.get("template") or "").strip()
         if selected:
-            entry_id, key = (selected.split("::", 1) if "::" in selected else
-                             (call.data.get("entry_id"), selected))
-            coordinator = target(entry_id)
+            coordinator, key = selected_template(selected)
             try:
                 await send_template(coordinator, key, call.data.get("variables", {}))
             except ValueError as exc:
@@ -86,11 +94,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             raise HomeAssistantError(str(exc)) from exc
 
     async def send_named_template(call: ServiceCall) -> None:
-        template_key = call.data["template"]
-        entry_id = call.data.get("entry_id")
-        if "::" in template_key:
-            entry_id, template_key = template_key.split("::", 1)
-        coordinator = target(entry_id)
+        coordinator, template_key = selected_template(call.data["template"])
         try:
             await send_template(coordinator, template_key, call.data["variables"])
         except ValueError as exc:

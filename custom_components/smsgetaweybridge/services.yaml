@@ -1,6 +1,6 @@
 send_sms:
   name: Send SMS (direct or saved template)
-  description: Send a one-off SMS, or choose a saved template from the live list shown in the automation editor.
+  description: "Send a one-off SMS. For a saved template without JSON, choose its own action named 'Send SMS: template_name'."
   fields:
     phone_number:
       name: Phone number (direct SMS)
@@ -23,20 +23,20 @@ send_sms:
         text: {}
     variables:
       name: Template variables
-      description: "Enter a mapping of variable names to values, e.g. host to nas and state to offline. The option labels show required variables."
+      description: "Advanced mapping. For individual fields without JSON, select the separate 'Send SMS: template_name' action instead."
       required: false
       selector:
         object: {}
     entry_id:
-      name: Gateway entry
-      description: Optional when a single gateway is configured. The saved-template selector includes its gateway automatically.
+      name: Gateway for direct SMS
+      description: Only needed for direct sending with multiple phones. Saved templates select their gateway automatically.
       required: false
       selector:
         config_entry:
           integration: smsgetaweybridge
 send_template:
-  name: Send saved SMS template
-  description: Choose a template from the saved list. Its recipient group and required variable names are displayed.
+  name: Send saved SMS template (advanced)
+  description: "The message and recipients come from SMS Bridge -> Templates & Groups. For individual variable fields, use the dedicated 'Send SMS: template_name' action. No JSON is needed there."
   fields:
     template:
       required: true
@@ -47,12 +47,6 @@ send_template:
     variables:
       required: false
       name: Template variables
-      description: "Named variables are shown alongside the selected template. For example, set host to nas."
+      description: "Advanced mapping only. For no-JSON fields select 'Send SMS: template_name' from the action picker."
       selector:
         object: {}
-    entry_id:
-      required: false
-      name: Gateway entry
-      selector:
-        config_entry:
-          integration: smsgetaweybridge

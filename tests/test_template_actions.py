@@ -78,6 +78,69 @@ class TemplateActionsTests(unittest.IsolatedAsyncioTestCase):
             template_variables('Bad $')
         with self.assertRaises(ValueError):
             template_variables('Bad $123')
+    async def test_dedicated_action_includes_exact_saved_body_and_group(self):
+        await update_template_actions(self.hass)
+        name = next(n for n in self.services.handlers if n[1].startswith('send_saved_'))[1]
+        desc = next(d for action_name, d in self.description_log if action_name == name)
+        self.assertIn('Server $host is ${status} / $$', desc['description'])
+        self.assertIn('Recipient group: ops', desc['description'])
+        self.assertIn('Required variables: $host, $status', desc['description'])
+        self.assertIn('no JSON', desc['description'])
+        self.assertEqual(set(desc['fields']), {'host', 'status'})
+        self.assertEqual(desc['fields']['host']['selector'], {'text': {}})
+        self.assertIn('Do not enter JSON', desc['fields']['status']['description'])
+
+    async def test_legacy_gateway_field_is_not_in_saved_template_action(self):
+        await update_template_actions(self.hass)
+        descriptions = dict(self.description_log)
+        self.assertNotIn('entry_id', descriptions['send_template']['fields'])
+        self.assertNotIn('legacy', str(descriptions['send_template']).lower())
+        self.assertIn('entry_id', descriptions['send_sms']['fields'])  # still needed for direct sending to multiple phones
+        # The service schema itself must reject entry_id, not merely hide it in the GUI.
+        schema = integration.TEMPLATE_SCHEMA
+        keys = [str(key) for key in schema.keys()]
+        self.assertNotIn('entry_id', keys)
+
+    async def test_unqualified_old_template_name_is_rejected_before_sending(self):
+        await update_template_actions(self.hass)
+        handler = self.services.handlers[('smsgetaweybridge', 'send_template')]
+        from homeassistant.exceptions import ServiceValidationError
+        with self.assertRaisesRegex(ServiceValidationError, 'no longer supported'):
+            await handler(SimpleNamespace(data={
+                'template': 'server_alert',
+                'entry_id': 'gateway_x',
+                'variables': {'host': 'nas', 'status': 'offline'},
+            }))
+        self.assertEqual(self.client.calls, [])
+
+    async def test_unqualified_template_is_rejected_in_mixed_send_action(self):
+        handler = self.services.handlers[('smsgetaweybridge', 'send_sms')]
+        from homeassistant.exceptions import ServiceValidationError
+        with self.assertRaises(ServiceValidationError):
+            await handler(SimpleNamespace(data={
+                'template': 'server_alert',
+                'entry_id': 'gateway_x',
+                'variables': {'host': 'nas', 'status': 'offline'},
+            }))
+        self.assertEqual(self.client.calls, [])
+
+    async def test_template_without_variables_has_no_form_fields(self):
+        self.manager.templates['static_message'] = {'group': 'ops', 'body': 'Static SMS'}
+        await update_template_actions(self.hass)
+        name = next(n for d,n in self.services.handlers if n.endswith('_static_message'))
+        desc = next(v for k,v in self.description_log if k == name)
+        self.assertEqual(desc['fields'], {})
+        self.assertIn('Required variables: none', desc['description'])
+        await self.services.handlers[('smsgetaweybridge', name)](SimpleNamespace(data={}))
+        self.assertEqual(self.client.calls, [('+441234567890', 'Static SMS')])
+
+    async def test_message_preview_is_bounded_for_large_templates(self):
+        self.manager.templates['long'] = {'group': 'ops', 'body': 'X' * 700}
+        await update_template_actions(self.hass)
+        name = next(n for d,n in self.services.handlers if n.endswith('_long'))
+        desc = next(v for k,v in self.description_log if k == name)
+        self.assertIn('X' * 400 + '…', desc['description'])
+        self.assertNotIn('X' * 401, desc['description'])
 
 
 if __name__=='__main__': unittest.main()

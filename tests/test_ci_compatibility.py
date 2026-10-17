@@ -15,7 +15,7 @@ class CompatibilityTests(unittest.TestCase):
         keys = list(data)
         self.assertEqual(keys[:2], ["domain", "name"])
         self.assertEqual(keys[2:], sorted(keys[2:]))
-        self.assertEqual(data["version"], "1.0.0")
+        self.assertEqual(data["version"], "1.0.1")
 
     def test_config_entry_only_schema_is_declared(self):
         source = (COMPONENT / "__init__.py").read_text(encoding="utf-8")

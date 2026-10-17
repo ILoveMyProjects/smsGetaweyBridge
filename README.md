@@ -1,4 +1,8 @@
-# smsGetaweyBridge
+<p align="center">
+  <img src="custom_components/smsgetaweybridge/brand/icon.png" alt="smsGetaweyBridge icon" width="128" height="128" />
+</p>
+
+<h1 align="center">smsGetaweyBridge</h1>
 
 [![Tests / HACS / Hassfest](https://github.com/ILoveMyProjects/smsGetaweyBridge/actions/workflows/tests.yml/badge.svg)](https://github.com/ILoveMyProjects/smsGetaweyBridge/actions/workflows/tests.yml)
 [![GitHub Releases](https://img.shields.io/github/v/release/ILoveMyProjects/smsGetaweyBridge?include_prereleases)](https://github.com/ILoveMyProjects/smsGetaweyBridge/releases)
@@ -7,7 +11,7 @@
 
 **Documentation:** English (this page) · [Polski](docs/README_PL.md) · [Security guide](docs/SECURITY.md) · [Release procedure](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-> **Release v1.0.0 (awaiting live verification).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
+> **Release v1.0.1 (awaiting live verification).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
 
 > **GitHub repository setup:** HACS validation also requires a non-empty repository description and topics. Configure these under GitHub repository **About → Edit**; README text and `manifest.json` do not change those GitHub settings. See [Releasing](docs/RELEASING.md).
 
@@ -66,21 +70,19 @@ Replace the sample phone number with a number you control. **SMS transmission ma
 
 An API acknowledgment means the gateway **accepted the request**, **not** that the operator delivered the SMS. Delivery reporting depends on the mobile network and device.
 
-## Saved recipient groups and templates (v1.0.0)
+## Saved recipient groups and templates (v1.0.1)
 
 From the left sidebar select **SMS Bridge → Templates & Groups**. Create a recipient group using international E.164 phone numbers, e.g. `+441234567890`. Then create a template referencing the group. Use placeholders like `$device` or `${device}` (escaped dollar: `$$`). The admin panel has a visible template list with Edit/Delete controls, and automatically creates text fields for the variables used by the chosen template.
 
-To send a saved template from an HA automation:
+**Recommended: send from the visual automation editor without JSON.** In **Settings → Automations & scenes**, add an action and search for **`smsGetaweyBridge: Send SMS: server_alert`** (replace `server_alert` with your saved template name). The dedicated action displays:
 
-```yaml
-action: smsgetaweybridge.send_template
-data:
-  template: server_alert
-  variables:
-    device: "nas01"
-```
+- **Saved SMS text:** the template body, e.g. `Server $host is $status`, plus the recipient group.
+- **Individual input fields:** `host` and `status`; type values such as `nas01` and `offline`. Do **not** type JSON or the `$` character in these fields.
+- **Recipients:** taken automatically from the saved group. You do not enter phone numbers or repeat the SMS text.
 
-The template and recipient group must already exist in the sidebar manager. This action can submit one SMS for each group member, and **partial sending is possible if a later recipient fails**. Check the gateway before retrying. Use unique entry IDs when controlling multiple phones.
+The separate **Send saved SMS template (advanced)** action retains the live dropdown, but its **Variables** object mapping is intended for advanced YAML automations. It does **not** have a legacy gateway selector. Each dropdown choice includes the gateway ID, so old plain-name YAML templates must be updated to use the picker value (e.g. `ENTRY_ID::server_alert`) or the dedicated named action.
+
+The template and recipient group must already exist in the sidebar manager. The action can submit one SMS for each group member, and **partial sending is possible if a later recipient fails**. Check the gateway before retrying.
 
 ## Automatic local HTTPS webhook registration
 
@@ -88,31 +90,20 @@ On installation or reconfiguration, `smsGetaweyBridge` automatically discovers t
 
 **Important:** The Android Secure build requires a certificate it trusts. If HA is only accessible via HTTP on the LAN, registration is **not possible** without setting up a valid internal HTTPS endpoint in Home Assistant/network infrastructure. The bridge will report `unavailable_local_https` and keep polling; it will **not** disable Android TLS security, expose a public address or configure your router. It cannot automatically create TLS certificates or change firewall rules. If the registration fails, the panel reports `registration_failed`. **Registered only means the Android API accepted the subscription; actual webhook delivery still needs a live test.**
 
-### Templates from the visual automation editor
+### Templates from the visual automation editor (no JSON required)
 
-Create a recipient group and a template in **SMS Bridge → Templates & Groups**. Example: group `ops`, template key `server_alert`, body `Server $host is $status`.
+1. In **SMS Bridge → Templates & Groups**, save group `ops` and template `server_alert`, body `Server $host is $status`.
+2. Open **Settings → Automations & scenes → Add action**.
+3. **Choose the dedicated action `smsGetaweyBridge: Send SMS: server_alert`**, not the general advanced action.
+4. Read **Saved SMS text: Server $host is $status** and **Recipient group: ops** in the action description.
+5. Fill out the two normal text fields: **host** → `nas01`, **status** → `offline`. No JSON, no phone number, and no message body are needed.
+6. Save the automation. It will send `Server nas01 is offline` to the phone numbers stored in group `ops` when its trigger fires. SMS may be billed.
 
-Then in **Settings → Automations & scenes → Add action**, choose one of:
+After adding or editing a template, **close and re-open the automation editor** to refresh the generated action fields. A saved template that has no `$variables` has no additional fields.
 
-- **smsGetaweyBridge: Send SMS (direct or saved template)** — choose `server_alert` from the **Saved template** drop-down and enter `host`/`status` in the **Template variables** mapping. The option label lists the group and exact required variables. For a one-off SMS, leave Saved template blank and enter Phone number and Message.
-- **smsGetaweyBridge: Send saved SMS template** — the same live drop-down, with group and variable names shown.
-- **smsGetaweyBridge: Send SMS: server_alert** — a dedicated action created automatically for this template, with separate `host` and `status` text fields. This is the simplest no-guessing option. After editing a template, re-open the action editor to refresh its fields.
+Other actions still exist: **Send SMS (direct or saved template)** for a one-off phone/message, and **Send saved SMS template (advanced)** for users who specifically need to supply a variable mapping. With multiple Android gateways, direct sending may require choosing **Gateway for direct SMS**; selecting a saved template already identifies its gateway. **The old `Gateway entry (legacy)` field is removed in v1.0.1.** Previous YAML that sends a template by a plain unqualified name (or supplies `entry_id` to `send_template`) must be updated.
 
 **Never press Run repeatedly after a timeout**: sending may have succeeded at the phone although Home Assistant did not receive its acknowledgement. The integration does not automatically retry paid SMS sending.
-
-Example of the dynamic action (the exact action ID is assigned by Home Assistant from the configured gateway entry):
-
-```yaml
-# Use the Home Assistant visual action picker; do not guess the action ID.
-action: smsgetaweybridge.send_template
-data:
-  template: "YOUR_ENTRY_ID::server_alert"
-  variables:
-    host: "nas"
-    status: "offline"
-```
-
-If there are multiple configured Android gateways, each drop-down choice identifies its own configuration entry; selecting a template does not route it via Ubuntu.
 
 ## Data flow and coexistence with Ubuntu
 

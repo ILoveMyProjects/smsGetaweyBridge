@@ -29,21 +29,27 @@ Numer jest przykładowy. Wysyłka SMS może kosztować zgodnie z taryfą operato
 
 Integracja odczytuje nowe SMS-y i statusy z API co **30 sekund** i emituje zdarzenia `smsgetaweybridge_sms_received`, `smsgetaweybridge_sms_status` oraz `smsgetaweybridge_sms_queued`.
 
-Wersja **v1.0.0 nie została jeszcze przetestowana na prawdziwym HA i telefonie**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
+Wersja **v1.0.1 nie została jeszcze przetestowana na prawdziwym HA i telefonie**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
 
 ## Bezpieczeństwo
 
 Nie otwieraj portu bramki na publiczny internet. HTTP Basic Auth bez HTTPS nie szyfruje hasła ani treści; wybierz zaufany LAN/VLAN lub poprawnie skonfigurowane HTTPS. Dane SMS mogą zawierać poufne informacje. Więcej: [Bezpieczeństwo PL](BEZPIECZENSTWO_PL.md).
 
-## Panel SMS Bridge (v1.0.0)
+## Panel SMS Bridge (v1.0.1)
 
 Home Assistant ma trzy zakładki **Overview**, **Templates & Groups** i **Activity & Logs**. Na każdej jest krótka instrukcja. W zakładce **Templates & Groups** można tworzyć, edytować i usuwać grupy odbiorców i szablony. Wybranie szablonu pokazuje osobne pola `$zmiennych`, które należy uzupełnić. `Activity & Logs` wyjaśnia znaczenie statusów SMS i pokazuje zdarzenia bez przechowywania pełnych numerów i treści.
 
-## Wybór szablonu w automatyzacji (bez zgadywania)
+## Szablony w automatyzacjach — bez JSON-a
 
-W edytorze automatyzacji wybierz akcję `smsgetaweybridge.send_sms` albo `smsgetaweybridge.send_template`. Pole **Saved template** zawiera listę utworzonych szablonów wraz z nazwą grupy oraz wymaganymi zmiennymi. Zmienne wpisuje się w polu **Variables** jako mapę `nazwa: wartość`.
+Najpierw w **SMS Bridge → Templates & Groups** utwórz grupę `ops` z numerami odbiorców oraz szablon `server_alert` o treści `Server $host is $status`.
 
-Każdy zapisany szablon ma również **osobną akcję** w Home Assistant, nazwaną **Send SMS: nazwa_szablonu**, z osobnymi polami dla każdej wymaganej zmiennej. Ta akcja pozwala uzupełniać wartości bez ręcznego JSON-a. Po dodaniu lub zmianie szablonu otwórz edytor automatyzacji ponownie, aby lista i pola się odświeżyły.
+W **Ustawienia → Automatyzacje → Dodaj akcję** wybierz **smsGetaweyBridge: Send SMS: server_alert**. To **osobna akcja wygenerowana dla tego szablonu**, a nie ogólna `Send saved SMS template (advanced)`.
+
+Opis akcji pokazuje **treść SMS-a**, **nazwę grupy** oraz wymagane zmienne. W zwykłych polach tekstowych wpisz `host = nas01` oraz `status = offline`. Wiadomość `Server nas01 is offline` trafi do numerów w grupie `ops` po uruchomieniu automatyzacji. **Nie wpisujesz JSON-a, treści SMS-a ani numerów ponownie.** Jeśli szablon nie ma zmiennych, nie trzeba uzupełniać żadnych dodatkowych pól.
+
+Jeżeli dodasz lub zmienisz szablon, zamknij i otwórz ponownie edytor automatyzacji, by odświeżyć dostępne akcje.
+
+Dostępna jest również ogólna akcja **Send saved SMS template (advanced)** z wyborem z listy i mapą zmiennych dla zaawansowanych automatyzacji. **Pole `Gateway entry (legacy)` zostało usunięte.** Stare automatyzacje wybierające szablon po samej nazwie albo przekazujące `entry_id` do `send_template` muszą być zaktualizowane. Przy wysyłce bezpośredniej na numer wybór bramki może być nadal konieczny, gdy skonfigurowanych jest kilka telefonów.
 
 Wysłanie SMS-a może kosztować. Brak potwierdzenia odpowiedzi z bramki nie oznacza, że SMS nie został wysłany — nie powtarzaj automatycznie żądania.
 

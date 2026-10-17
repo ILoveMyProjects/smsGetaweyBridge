@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1 — Clear visual automation actions and remove legacy gateway selection
+
+- Remove the `Gateway entry (legacy)` selector and legacy `entry_id`/unqualified template-name path from `send_template`; template choices now identify their gateway explicitly.
+- Improve dedicated `Send SMS: template_name` actions with a saved-message preview, recipient group, required variable names and simple labeled text fields, with no JSON editor.
+- Explain that general `send_template` and mixed send actions use advanced mappings, while dedicated actions are the recommended no-JSON method.
+- Center the existing project brand icon above the repository name in the English README and add illustrated-by-example instructions in English and Polish.
+- Add regression coverage for legacy rejection, descriptions, field layout and release metadata.
+
+**Breaking change:** older automations using plain template names or `entry_id` in `send_template` must switch to a picker-selected qualified ID or the dedicated action. Direct `send_sms` still supports `entry_id` when multiple phone gateways are configured.
+
+
 ## 1.0.0 — Automation templates, guided admin panel and automatic local webhooks
 
 - Display saved SMS templates as live choices in both standard Home Assistant send actions, with recipient group and required variables listed.
