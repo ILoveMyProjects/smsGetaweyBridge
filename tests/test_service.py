@@ -27,6 +27,7 @@ errors = sys.modules['homeassistant.exceptions']
 errors.HomeAssistantError = type('HomeAssistantError', (Exception,), {})
 errors.ServiceValidationError = type('ServiceValidationError', (Exception,), {})
 sys.modules['homeassistant.helpers.config_validation'].string = str
+sys.modules['homeassistant.helpers.config_validation'].config_entry_only_config_schema = lambda domain: {'config_entry_only': domain}
 sys.modules['homeassistant.helpers.aiohttp_client'].async_get_clientsession = lambda h: object()
 # Simulate only the GUI/webhook bootstrap: the actual services and manager run.
 frontend_stub = types.ModuleType('smsgetaweybridge.frontend')

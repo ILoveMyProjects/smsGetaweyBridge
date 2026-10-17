@@ -29,7 +29,7 @@ Numer jest przykładowy. Wysyłka SMS może kosztować zgodnie z taryfą operato
 
 Integracja odczytuje nowe SMS-y i statusy z API co **30 sekund** i emituje zdarzenia `smsgetaweybridge_sms_received`, `smsgetaweybridge_sms_status` oraz `smsgetaweybridge_sms_queued`.
 
-Wersja **v0.2.0 jest testowa**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
+Wersja **v0.2.1 jest testowa**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
 
 ## Bezpieczeństwo
 

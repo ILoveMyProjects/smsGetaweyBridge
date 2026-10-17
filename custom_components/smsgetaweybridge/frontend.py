@@ -114,7 +114,7 @@ async def setup_frontend(hass) -> None:
         hass,
         webcomponent_name="smsgetaweybridge-panel",
         frontend_url_path=PANEL_PATH,
-        module_url=f"{PANEL_URL}?v=0.2.0",
+        module_url=f"{PANEL_URL}?v=0.2.1",
         sidebar_title="SMS Bridge",
         sidebar_icon="mdi:message-processing-outline",
         config_panel_domain=DOMAIN,

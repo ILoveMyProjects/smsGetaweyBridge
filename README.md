@@ -7,7 +7,9 @@
 
 **Documentation:** English (this page) · [Polski](docs/README_PL.md) · [Security guide](docs/SECURITY.md) · [Release procedure](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-> **Preview release (v0.2.0).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
+> **Preview release (v0.2.1).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
+
+> **GitHub repository setup:** HACS validation also requires a non-empty repository description and topics. Configure these under GitHub repository **About → Edit**; README text and `manifest.json` do not change those GitHub settings. See [Releasing](docs/RELEASING.md).
 
 ## Features
 

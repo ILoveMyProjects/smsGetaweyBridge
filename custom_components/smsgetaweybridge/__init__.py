@@ -25,6 +25,9 @@ from .coordinator import SMSGatewayCoordinator
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
+# This integration is configured exclusively through Home Assistant config entries.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 TEMPLATE_SCHEMA = vol.Schema({
     vol.Required("template"): cv.string,
     vol.Optional("variables", default={}): dict,

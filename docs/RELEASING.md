@@ -4,7 +4,7 @@ Repository: <https://github.com/ILoveMyProjects/smsGetaweyBridge>
 
 ## Versioning
 
-- Use annotated Git tags `vX.Y.Z` (for example, `v0.2.0`).
+- Use annotated Git tags `vX.Y.Z` (for example, `v0.2.1`).
 - Keep `custom_components/smsgetaweybridge/manifest.json` `version` equal to the tag **without** the leading `v`.
 - Update `CHANGELOG.md` with a section starting `## X.Y.Z` before tagging.
 - **Do not move or force-push an existing release tag.** If a version or tag already exists, publish a **new version** after updating the manifest and changelog (for example, `v0.1.2`).
@@ -26,9 +26,9 @@ Run in a local Git clone of the repository after merging the reviewed changes in
 git fetch --tags origin
 git status --short
 git tag -l 'v*'
-# Ensure v0.2.0 does not already exist before executing the next lines.
-git tag -a v0.2.0 -m 'smsGetaweyBridge v0.2.0'
-git push origin v0.2.0
+# Ensure v0.2.1 does not already exist before executing the next lines.
+git tag -a v0.2.1 -m 'smsGetaweyBridge v0.2.1'
+git push origin v0.2.1
 ```
 
 On a `push` for a `v*` tag, the single `.github/workflows/tests.yml` workflow runs these jobs:
@@ -51,7 +51,9 @@ If any check fails, the release job is skipped. `workflow_dispatch` and pull req
 
 ## GitHub repository settings (manual)
 
-Add a short English description and repository topics such as `home-assistant`, `hacs`, `sms`, `sms-gateway`, `android`. Enable Issues. HACS custom repositories and the default HACS catalog are different: joining the default catalog requires additional brand/review requirements and is **not** automatic with releases.
+**Before running HACS validation**, open the GitHub repository page, click **About → Edit (gear icon)**, fill in the **Description** with `Local Home Assistant SMS integration for SMS Gateway for Android`, then add repository **Topics**: `home-assistant`, `hacs`, `sms`, `sms-gateway`, `android`. Save. Ensure Issues are enabled (Settings → General → Features). These settings live in GitHub repository metadata and cannot be applied by uploading a ZIP or editing README.
+
+Brand assets are shipped in `custom_components/smsgetaweybridge/brand/icon.png` and `dark_icon.png` for Home Assistant 2026.3 and later. HACS custom repositories and the default HACS catalog are different: joining the default catalog requires additional brand/review requirements and is **not** automatic with releases.
 
 ## Troubleshooting
 

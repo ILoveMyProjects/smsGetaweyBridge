@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — Preview: HACS/Hassfest CI compatibility fixes
+
+- Declare the config-entry-only `CONFIG_SCHEMA` required by Hassfest for `async_setup` integrations.
+- Order manifest keys correctly (`domain`, `name`, then alphabetical), and bump the integration version for HACS updates.
+- Bundle original local brand icons under `custom_components/smsgetaweybridge/brand/` to satisfy HACS brand validation and provide a device/integration icon.
+- Update GitHub Actions runtime dependencies (`actions/checkout@v5` and `actions/setup-python@v6`) to avoid Node.js 20 deprecation notices.
+- Add offline regression checks for manifest ordering, schema declaration, brand assets and workflow action versions.
+- Document mandatory repository-side GitHub description/topics, which cannot be set by an integration ZIP.
+
+**Validation note:** HACS/Hassfest must still be run in GitHub Actions; this update addresses the specific log findings but does not claim live CI validation.
+
 ## 0.2.0 — Preview: Admin panel, templates and activity
 
 - Add an administrator-only Home Assistant sidebar panel with **Overview**, **Templates** and **Logs** tabs.

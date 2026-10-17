@@ -6,16 +6,16 @@
     "@ILoveMyProjects"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/ILoveMyProjects/smsGetaweyBridge#readme",
-  "integration_type": "hub",
-  "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/ILoveMyProjects/smsGetaweyBridge/issues",
-  "requirements": [],
-  "version": "0.2.0",
   "dependencies": [
     "http",
     "frontend",
     "panel_custom",
     "websocket_api"
-  ]
+  ],
+  "documentation": "https://github.com/ILoveMyProjects/smsGetaweyBridge#readme",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ILoveMyProjects/smsGetaweyBridge/issues",
+  "requirements": [],
+  "version": "0.2.1"
 }
