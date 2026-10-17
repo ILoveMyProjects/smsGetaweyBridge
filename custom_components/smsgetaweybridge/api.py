@@ -125,6 +125,14 @@ class GatewayClient:
     async def get_all_messages(self) -> list[dict[str, Any]]:
         return await self._all_pages(self.get_messages)
 
+    async def list_webhooks(self) -> list[dict[str, Any]]:
+        return self._validate_list(await self._request("GET", "/webhooks"), "/webhooks")
+
+    async def add_webhook(self, webhook_id: str, url: str, event: str) -> None:
+        await self._request("POST", "/webhooks", json={
+            "id": webhook_id, "url": url, "event": event,
+        })
+
     async def send_sms(self, number: str, message: str) -> dict[str, Any]:
         """Submit ONCE to the documented Local Server route; never retry a POST."""
         payload = {"textMessage": {"text": message}, "phoneNumbers": [number]}

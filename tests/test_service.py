@@ -10,7 +10,8 @@ path = Path(__file__).resolve().parents[1] / 'custom_components/smsgetaweybridge
 
 for mod in ('voluptuous', 'homeassistant', 'homeassistant.const', 'homeassistant.core',
             'homeassistant.exceptions', 'homeassistant.helpers',
-            'homeassistant.helpers.config_validation', 'homeassistant.helpers.aiohttp_client'):
+            'homeassistant.helpers.config_validation', 'homeassistant.helpers.aiohttp_client',
+            'homeassistant.helpers.storage'):
     sys.modules.setdefault(mod, types.ModuleType(mod))
 
 v = sys.modules['voluptuous']
@@ -27,6 +28,20 @@ errors.HomeAssistantError = type('HomeAssistantError', (Exception,), {})
 errors.ServiceValidationError = type('ServiceValidationError', (Exception,), {})
 sys.modules['homeassistant.helpers.config_validation'].string = str
 sys.modules['homeassistant.helpers.aiohttp_client'].async_get_clientsession = lambda h: object()
+# Simulate only the GUI/webhook bootstrap: the actual services and manager run.
+frontend_stub = types.ModuleType('smsgetaweybridge.frontend')
+async def setup_frontend(_hass): pass
+frontend_stub.setup_frontend = setup_frontend
+sys.modules['smsgetaweybridge.frontend'] = frontend_stub
+webhook_stub = types.ModuleType('smsgetaweybridge.webhooks')
+webhook_stub.setup_webhook = lambda *args: None
+webhook_stub.unload_webhook = lambda *args: None
+sys.modules['smsgetaweybridge.webhooks'] = webhook_stub
+class Store:
+    def __init__(self,*args): pass
+    async def async_load(self): return None
+    async def async_save(self, data): pass
+sys.modules['homeassistant.helpers.storage'].Store = Store
 
 spec = importlib.util.spec_from_file_location('smsgetaweybridge', path/'__init__.py', submodule_search_locations=[str(path)])
 integration = importlib.util.module_from_spec(spec)
@@ -70,8 +85,13 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         self.hass = SimpleNamespace(data={}, services=self.services, bus=self.bus)
         await integration.async_setup(self.hass, {})
         self.handler = self.services.handlers[('smsgetaweybridge','send_sms')]
+        manager = SimpleNamespace(track_ha=self.track_ha, origin={})
         self.hass.data['smsgetaweybridge']['gateway'] = SimpleNamespace(
-            client=self.client, entry=SimpleNamespace(entry_id='gateway'))
+            client=self.client, entry=SimpleNamespace(entry_id='gateway'),
+            manager=manager, hass=self.hass)
+
+    async def track_ha(self, mid, number):
+        self.hass.data['smsgetaweybridge']['gateway'].manager.origin[mid] = 'homeassistant'
 
     async def test_send_once(self):
         await self.handler(SimpleNamespace(data={'phone_number':' +44123 ','message':'Alarm'}))

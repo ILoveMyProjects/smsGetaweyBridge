@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 — Preview: Admin panel, templates and activity
+
+- Add an administrator-only Home Assistant sidebar panel with **Overview**, **Templates** and **Logs** tabs.
+- Add named recipient groups and message templates stored persistently in Home Assistant.
+- Add `smsgetaweybridge.send_template` action, which substitutes named `$variables` safely and sends to a saved group.
+- Track IDs of requests sent from Home Assistant, labeling all other observed sends as `external/unknown` rather than assuming Ubuntu origin.
+- Add device registry metadata for the online, inbox count, outgoing count and status entities.
+- Add capped privacy-conscious activity log (no SMS contents or full destination numbers).
+- Add opt-in, local-only Home Assistant webhooks requiring an internal HTTPS origin trusted by the Galaxy phone; polling remains enabled.
+- Keep both HA and Ubuntu as independent clients of the phone's Local Server. No software installed on the phone.
+
+**Preview restrictions:** Not tested end-to-end against a running Home Assistant/Galaxy S9. Outgoing multi-recipient group sends may partially complete before an error. No automatic retries. Webhook configuration can require local TLS certificate and special network setup. Background periodic polling of large outgoing histories continues.
+
 ## 0.1.1 — Preview, audit fixes
 
 - Paginated inbox reads from a persisted timestamp cursor, and paginated full outgoing scans (250 per page, explicit 10,000 record ceiling with error on overflow).

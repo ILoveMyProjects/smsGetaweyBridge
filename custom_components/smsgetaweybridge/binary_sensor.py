@@ -17,6 +17,12 @@ class GatewayOnline(CoordinatorEntity, BinarySensorEntity):
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id)},
+            "name": "smsGetaweyBridge Galaxy SMS Gateway",
+            "manufacturer": "ILoveMyProjects",
+            "model": "SMS Gateway Local Server",
+        }
         self._attr_unique_id = f"{coordinator.entry.entry_id}_online"
 
     @property

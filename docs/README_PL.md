@@ -29,8 +29,24 @@ Numer jest przykładowy. Wysyłka SMS może kosztować zgodnie z taryfą operato
 
 Integracja odczytuje nowe SMS-y i statusy z API co **30 sekund** i emituje zdarzenia `smsgetaweybridge_sms_received`, `smsgetaweybridge_sms_status` oraz `smsgetaweybridge_sms_queued`.
 
-Wersja **v0.1.1 jest testowa**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
+Wersja **v0.2.0 jest testowa**: nie została sprawdzona na działającej instalacji Home Assistant i fizycznym telefonie. Nie gwarantuje dostarczenia zdarzeń dokładnie jeden raz; treść przychodzących SMS-ów może być tylko podglądem. Synchronizacja obsługuje paginację z limitem 10 000 wyników na kategorię. Samo zlecenie wysłania nie oznacza doręczenia.
 
 ## Bezpieczeństwo
 
 Nie otwieraj portu bramki na publiczny internet. HTTP Basic Auth bez HTTPS nie szyfruje hasła ani treści; wybierz zaufany LAN/VLAN lub poprawnie skonfigurowane HTTPS. Dane SMS mogą zawierać poufne informacje. Więcej: [Bezpieczeństwo PL](BEZPIECZENSTWO_PL.md).
+
+## Panel SMS Bridge (v0.2.0)
+
+W bocznym menu Home Assistant pojawia się **SMS Bridge** z trzema zakładkami **Overview / Templates / Logs**. `Overview` przedstawia stan bramki i pozwala *opcjonalnie* włączyć webhook do lokalnego HTTPS. `Templates` pozwala tworzyć grupy numerów i szablony SMS z polami `$nazwa`, a `Logs` wyświetla aktywność bez treści wiadomości i bez pełnych numerów telefonów.
+
+Automatyzacja z nazwanym szablonem:
+
+```yaml
+action: smsgetaweybridge.send_template
+data:
+  template: alarm
+  variables:
+    device: "nas"
+```
+
+Wysyłki z HA są identyfikowane po ID jako `homeassistant`. Wysłane przez inne systemy otrzymują `external/unknown` — aplikacja nie zgaduje, czy wykonało je Ubuntu. Webhooki wymagają lokalnego HTTPS, certyfikatu zaufanego przez telefon i dozwolonego ruchu z telefonu do HA. Bez webhooków nadal działa polling co 30 sekund.

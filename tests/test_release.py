@@ -16,7 +16,7 @@ from build_release import prepare_release  # noqa: E402
 class ReleaseTests(unittest.TestCase):
     def test_release_package_and_checksum(self):
         with tempfile.TemporaryDirectory() as folder:
-            archive, checksum, notes = prepare_release('v0.1.1', Path(folder))
+            archive, checksum, notes = prepare_release('v0.2.0', Path(folder))
             self.assertTrue(archive.exists())
             self.assertTrue(checksum.exists())
             self.assertTrue(notes.exists())
@@ -24,11 +24,12 @@ class ReleaseTests(unittest.TestCase):
                 self.assertIsNone(zipped.testzip())
                 self.assertIn('custom_components/smsgetaweybridge/manifest.json', zipped.namelist())
                 self.assertIn('custom_components/smsgetaweybridge/translations/en.json', zipped.namelist())
+                self.assertIn('custom_components/smsgetaweybridge/frontend/panel.js', zipped.namelist())
                 self.assertFalse(any('__pycache__' in name or name.endswith('.pyc') for name in zipped.namelist()))
                 self.assertFalse(any(name.startswith('tests/') for name in zipped.namelist()))
             content = checksum.read_text().strip()
             self.assertEqual(content, hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name)
-            self.assertIn('0.1.1', notes.read_text())
+            self.assertIn('0.2.0', notes.read_text())
 
     def test_version_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

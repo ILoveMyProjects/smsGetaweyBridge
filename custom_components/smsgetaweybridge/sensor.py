@@ -22,6 +22,12 @@ class GatewayCount(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator, field, name, icon):
         super().__init__(coordinator)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id)},
+            "name": "smsGetaweyBridge Galaxy SMS Gateway",
+            "manufacturer": "ILoveMyProjects",
+            "model": "SMS Gateway Local Server",
+        }
         self._field = field
         self._attr_name = name
         self._attr_icon = icon
@@ -39,6 +45,12 @@ class LatestStatus(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id)},
+            "name": "smsGetaweyBridge Galaxy SMS Gateway",
+            "manufacturer": "ILoveMyProjects",
+            "model": "SMS Gateway Local Server",
+        }
         self._attr_unique_id = f"{coordinator.entry.entry_id}_latest_status"
 
     @property

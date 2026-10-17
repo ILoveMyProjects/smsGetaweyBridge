@@ -23,3 +23,24 @@ send_sms:
       required: false
       selector:
         text: {}
+send_template:
+  name: Send saved SMS template
+  description: Send a named message template to its saved recipient group. May incur SMS charges.
+  fields:
+    template:
+      required: true
+      name: Template key
+      selector:
+        text: {}
+    variables:
+      required: false
+      name: Template variables
+      description: "Dictionary of named variables and string values (example below)."
+      example: {"entity": "server"}
+      selector:
+        object: {}
+    entry_id:
+      required: false
+      name: Gateway entry ID
+      selector:
+        text: {}

@@ -28,6 +28,9 @@ class SMSGatewayCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
         self.client = client
+        self.manager = None  # Set by async_setup_entry after loading persistent state.
+        self._webhook_inbox: set[str] = set()
+        self._webhook_status: set[tuple[str, str]] = set()
         self.entry = entry
         self.store = Store(hass, 1, f"smsgetaweybridge_{entry.entry_id}")
         self._seen: list[str] = []
@@ -157,19 +160,32 @@ class SMSGatewayCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # cursor is saved. After an unexpected crash, consumers should dedupe
         # by message_id / (message_id, state, changed_at).
         for _, mid, item in sorted(incoming, key=lambda x: (x[0], x[1])):
+            if mid in self._webhook_inbox:
+                continue
+            if self.manager is not None:
+                await self.manager.event("received", mid)
             self.hass.bus.async_fire(EVENT_SMS_RECEIVED, {
                 "entry_id": self.entry.entry_id, **incoming_event(item),
             })
         for _, mid, state, changed_at in sorted(status_events):
+            if (mid, state) in self._webhook_status:
+                continue
+            source = (await self.manager.event("status", mid, state)
+                      if self.manager is not None else "external/unknown")
             self.hass.bus.async_fire(EVENT_SMS_STATUS, {
                 "entry_id": self.entry.entry_id,
                 "message_id": mid, "state": state, "changed_at": changed_at,
+                "source": source,
             })
         for mid, state in fallback_events:
+            if (mid, state) in self._webhook_status:
+                continue
+            source = (await self.manager.event("status", mid, state)
+                      if self.manager is not None else "external/unknown")
             self.hass.bus.async_fire(EVENT_SMS_STATUS, {
                 "entry_id": self.entry.entry_id,
                 "message_id": mid, "state": state,
-                "changed_at": None,
+                "changed_at": None, "source": source,
             })
 
         self._seen = new_seen

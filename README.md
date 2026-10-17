@@ -7,7 +7,7 @@
 
 **Documentation:** English (this page) · [Polski](docs/README_PL.md) · [Security guide](docs/SECURITY.md) · [Release procedure](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-> **Preview release (v0.1.1).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
+> **Preview release (v0.2.0).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
 
 ## Features
 
@@ -16,10 +16,14 @@
 - **Send SMS:** Call `smsgetaweybridge.send_sms` in actions and automations.
 - **Receive SMS events:** Polls the gateway's `GET /inbox` endpoint for new incoming messages.
 - **Track outgoing status:** Polls `GET /messages` for gateway-reported status changes, including intermediate history where available.
-- **Diagnostics:** Gateway online indicator and counters for the most recently synchronized inbox/outgoing results.
+- **Admin panel:** dedicated `SMS Bridge` sidebar page with **Overview**, **Templates**, and **Logs**.
+- **Saved templates and groups:** name groups of up to 30 recipient phone numbers and create text templates with `$variable` substitutions; send via a GUI or the `smsgetaweybridge.send_template` action.
+- **Optional webhooks:** register a local-only HTTPS endpoint for SMS events; continuous polling remains the fallback. HTTPS certificate must be trusted by the phone.
+- **Origin tracking:** outgoing requests made by HA are recorded by their message ID; other outgoing messages show `external/unknown`, not automatically `Ubuntu`.
+- **Diagnostics:** linked HA device entities, capped private activity log and status indicators.
 - **Independent clients:** An Ubuntu Server SMS manager can connect to the **same phone** directly; the two systems are independent. Messages sent by either client may appear in shared gateway history.
 
-The project is a **HACS custom integration**, not a Home Assistant Supervisor add-on/App. There is no built-in full SMS inbox dashboard.
+The project is a **HACS custom integration**, not a Home Assistant Supervisor add-on/App. The new sidebar admin panel provides activity logs and template management; it is **not** a complete conversation archive.
 
 ## Requirements
 
@@ -60,9 +64,33 @@ Replace the sample phone number with a number you control. **SMS transmission ma
 
 An API acknowledgment means the gateway **accepted the request**, **not** that the operator delivered the SMS. Delivery reporting depends on the mobile network and device.
 
+## Saved recipient groups and templates (v0.2)
+
+From the left sidebar select **SMS Bridge → Templates**. Create a recipient group using international E.164 phone numbers, e.g. `+441234567890`. Then create a template referencing the group. Use placeholders like `$device` or `${device}` (escaped dollar: `$$`). The admin panel lets you select the chosen template and supply variables as JSON before confirming an SMS send.
+
+To send a saved template from an HA automation:
+
+```yaml
+action: smsgetaweybridge.send_template
+data:
+  template: server_alert
+  variables:
+    device: "nas01"
+```
+
+The template and recipient group must already exist in the sidebar manager. This action can submit one SMS for each group member, and **partial sending is possible if a later recipient fails**. Check the gateway before retrying. Use unique entry IDs when controlling multiple phones.
+
+## Optional local HTTPS webhook
+
+The default remains **local polling**, and no inbound webhook server or public service is required. To enable quicker events: open **SMS Bridge → Overview**, enter the **internal HTTPS origin** of Home Assistant (for example `https://ha.example.lan:8123`) and click **Register local webhooks**.
+
+**Requirements:** your Galaxy S9 must trust the TLS certificate and be allowed by its firewall to connect to the HA host; Home Assistant must see the phone as a local connection for its `local_only=True` webhook policy. The secure Android build rejects untrusted HTTP webhook targets. The integration creates a secret webhook ID, registers separate `sms:received`, `sms:sent`, `sms:delivered`, `sms:failed` subscriptions on the **phone**, and does not use cloudhooks or expose new router ports. Polling remains active, so HA events can occasionally repeat: deduplicate by message ID/state. Reconfiguration to a different HTTPS origin is blocked until old subscriptions are explicitly removed; do not manually copy the secret webhook URL into public systems.
+
+The webhook feature may fail to register in a standard LAN without a private certificate trust arrangement; it is optional. **No public internet is required.**
+
 ## Incoming messages and outgoing status events
 
-The integration fires these Home Assistant events after polling:
+The integration fires these Home Assistant events after polling, and optionally from local webhooks:
 
 | Event type | Useful fields | Meaning |
 | --- | --- | --- |
@@ -116,13 +144,13 @@ Both clients can send via the same phone. Polling `/inbox` and `/messages` does 
 
 ## Operating limits and reliability
 
-- **Polling interval:** every 30 seconds; **no inbound webhook server** is required in Home Assistant.
+- **Polling interval:** every 30 seconds; inbound HTTPS webhooks are optional.
 - **Pagination:** fetches up to 10,000 inbox results and 10,000 outgoing records per poll. If a category exceeds the safety limit, it reports a synchronization error instead of silently truncating. Exhaustive outgoing scans can burden older phones.
 - **Restart/migration:** deduplication checkpoints are saved in HA storage. Initial synchronization and upgrade from v0.1.0 establish a baseline without replaying old messages; the migration cutover may miss messages received during the cutover.
 - **Events are at-least-once:** after a crash/restart some events can repeat. Consumers that require one-time behavior must deduplicate by `message_id` or `(message_id, state, changed_at)`.
 - **Out-of-order updates:** a late status with an older timestamp may not be detected. Deleted messages cannot be reconstructed from the phone.
 - **SMS content:** the upstream API may provide only `contentPreview`, not the entire message. This integration does not support MMS or arbitrary sender IDs such as `HADevMaster` on a regular SIM.
-- **Scope:** there is no dedicated SMS conversations GUI or central Ubuntu SMS manager in this repository.
+- **Scope:** there is a template/activity admin panel but no full SMS conversation archive or Ubuntu SMS manager in this repository.
 
 ## Security
 
@@ -135,11 +163,7 @@ Both clients can send via the same phone. Polling `/inbox` and `/messages` does 
 
 The project ships with offline Python tests. Release automation runs Python tests, [HACS validation](https://www.hacs.dev/docs/publish/action/), and [Hassfest](https://github.com/home-assistant/actions#hassfest) before publishing a **GitHub Release** when an annotated `vX.Y.Z` tag is pushed. The release includes a manual-install ZIP and SHA-256 checksums. See [RELEASING.md](docs/RELEASING.md) for the exact commands and prerequisites.
 
-```bash
-python -m pip install aiohttp
-python -m unittest discover -s tests -v
-python -m compileall -q custom_components
-```
+Those commands are for developers and GitHub Actions runners only, **not** for phones, HA installations or Ubuntu SMS Manager hosts. See [Developer tests](docs/DEVELOPMENT.md).
 
 CI checks and offline tests do **not** replace a live HA + Android test.
 

@@ -14,7 +14,7 @@ Ustawienia typowej instalacji Galaxy S9:
 | Hasło | Z panelu Local Server |
 | Cloud Server | Wyłączony |
 
-Zalecana rezerwacja DHCP dla telefonu. **Nie wpisujemy IP na sztywno w skryptach instalacyjnych**: konfigurację można zmienić przez **Skonfiguruj ponownie** na karcie integracji (v0.1.1).
+Zalecana rezerwacja DHCP dla telefonu. **Nie wpisujemy IP na sztywno w skryptach instalacyjnych**: konfigurację można zmienić przez **Skonfiguruj ponownie** na karcie integracji (v0.2.0).
 
 ## 2. Home Assistant
 
@@ -100,3 +100,8 @@ Jeśli na telefonie jest ponad 10 000 rekordów danej kategorii, integracja zgł
 - Przy pierwszym uruchomieniu historyczne SMS-y są oznaczane jako już znane. To zachowanie zamierzone.
 
 **Nie publikuj logów z hasłami, numerami ani treściami wiadomości.**
+
+
+## 8. Nowy panel SMS Bridge v0.2.0
+
+Po aktualizacji integracji i restarcie HA w bocznym menu dostępny jest panel **SMS Bridge**. W **Templates** dodaj grupę odbiorców (numery w formacie `+48123123123`), następnie szablon tekstu, np. `ALERT: $device offline`, a potem wywołaj `smsgetaweybridge.send_template` w automatyzacji. **Logs** wyświetla lokalny dziennik bez treści SMS. **Overview** pozwala opcjonalnie skonfigurować callback HTTPS: potrzebny jest lokalny adres HTTPS i certyfikat zaufany przez telefon. Nie używaj publicznego internetu ani chmury.
