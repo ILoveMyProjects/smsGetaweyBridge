@@ -45,6 +45,22 @@ def render_message(body: str, values: dict[str, str]) -> str:
     return result
 
 
+def template_variables(body: str) -> list[str]:
+    """List real $variables, honoring escaped $$ and ${variable} syntax."""
+    result = []
+    for match in Template.pattern.finditer(body):
+        value = match.group("named") or match.group("braced")
+        if match.group("invalid") is not None:
+            raise ValueError("Invalid template placeholder; use $name or ${name}")
+        if value and value not in result:
+            result.append(value)
+    if any(not KEY_RE.fullmatch(v) for v in result):
+        raise ValueError("Variable names must start with a letter and contain only letters, digits or underscore")
+    if len(result) > 30:
+        raise ValueError("Maximum of 30 template variables")
+    return result
+
+
 class BridgeManager:
     """Only administrators may access templates, groups and logs via WebSocket."""
 
@@ -56,6 +72,7 @@ class BridgeManager:
         self.logs: list[dict[str, str]] = []
         self.webhook_id: str | None = None
         self.callback_base: str | None = None
+        self.webhook_status = "not_configured"
         self.lock = asyncio.Lock()
 
     async def load(self) -> None:
@@ -68,6 +85,7 @@ class BridgeManager:
         self.logs = raw.get("logs", [])[-MAX_LOGS:] if isinstance(raw.get("logs"), list) else []
         self.webhook_id = raw.get("webhook_id")
         self.callback_base = raw.get("callback_base")
+        self.webhook_status = raw.get("webhook_status", "not_configured")
 
     async def _save(self) -> None:
         await self.store.async_save({
@@ -77,6 +95,7 @@ class BridgeManager:
             "logs": self.logs,
             "webhook_id": self.webhook_id,
             "callback_base": self.callback_base,
+            "webhook_status": self.webhook_status,
         })
 
     async def edit(self, kind: str, name: str, value: Any | None) -> None:
@@ -95,6 +114,7 @@ class BridgeManager:
                     raise ValueError("Unknown recipient group")
                 if not isinstance(value["body"], str) or not 1 <= len(value["body"]) <= 1500:
                     raise ValueError("Invalid template body")
+                template_variables(value["body"])
         else:
             raise ValueError("Unknown item type")
         async with self.lock:
@@ -133,5 +153,7 @@ class BridgeManager:
         return {
             "groups": self.groups, "templates": self.templates,
             "logs": list(reversed(self.logs[-100:])),
-            "webhook_enabled": bool(self.webhook_id and self.callback_base),
+            "webhook_enabled": self.webhook_status == "registered",
+            "webhook_status": self.webhook_status,
+            "template_variables": {name: template_variables(t["body"]) for name, t in self.templates.items()},
         }

@@ -4,11 +4,11 @@ Repository: <https://github.com/ILoveMyProjects/smsGetaweyBridge>
 
 ## Versioning
 
-- Use annotated Git tags `vX.Y.Z` (for example, `v0.2.1`).
+- Use annotated Git tags `vX.Y.Z` (for example, `v1.0.0`).
 - Keep `custom_components/smsgetaweybridge/manifest.json` `version` equal to the tag **without** the leading `v`.
 - Update `CHANGELOG.md` with a section starting `## X.Y.Z` before tagging.
-- **Do not move or force-push an existing release tag.** If a version or tag already exists, publish a **new version** after updating the manifest and changelog (for example, `v0.1.2`).
-- During the current `0.x` preview series, the automated workflow marks releases as *pre-release*. Remove this policy deliberately when the project reaches stable status.
+- **Do not move or force-push an existing release tag.** If a version or tag already exists, publish a **new version** after updating the manifest and changelog (for example, the next patch tag).
+- The workflow treats `1.x` version tags as regular GitHub Releases. Despite the version number, users must still verify live Home Assistant and Android behaviour before relying on critical SMS alerts.
 
 ## Before tagging
 
@@ -26,9 +26,9 @@ Run in a local Git clone of the repository after merging the reviewed changes in
 git fetch --tags origin
 git status --short
 git tag -l 'v*'
-# Ensure v0.2.1 does not already exist before executing the next lines.
-git tag -a v0.2.1 -m 'smsGetaweyBridge v0.2.1'
-git push origin v0.2.1
+# Ensure v1.0.0 does not already exist before executing the next lines.
+git tag -a v1.0.0 -m 'smsGetaweyBridge v1.0.0'
+git push origin v1.0.0
 ```
 
 On a `push` for a `v*` tag, the single `.github/workflows/tests.yml` workflow runs these jobs:

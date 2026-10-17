@@ -5,11 +5,17 @@ The local HTTPS URL is opt-in. No cloudhook, public IP, or opening router ports.
 from __future__ import annotations
 
 from urllib.parse import urlsplit
+from uuid import NAMESPACE_URL, uuid5
+import logging
+
+from homeassistant.helpers.network import get_url, NoURLAvailableError
 
 from aiohttp import web
 from homeassistant.components import webhook
 
 from .const import DOMAIN, EVENT_SMS_RECEIVED, EVENT_SMS_STATUS
+
+_LOGGER = logging.getLogger(__name__)
 
 EVENTS = ("sms:received", "sms:sent", "sms:delivered", "sms:failed")
 
@@ -87,36 +93,64 @@ def unload_webhook(hass, coordinator) -> None:
         webhook.async_unregister(hass, coordinator.manager.webhook_id)
 
 
+def registration_id(entry_id: str, event: str) -> str:
+    """Stable 36-character webhook ID, unique per HA gateway and event."""
+    return str(uuid5(NAMESPACE_URL, f"{DOMAIN}:{entry_id}:{event}"))
+
+
+async def auto_configure(hass, coordinator) -> None:
+    """Register Android-side subscriptions after a successful local login.
+
+    Never use an external/cloud Home Assistant URL, request a user-entered URL,
+    or switch off Android's HTTPS security. Polling continues when unavailable.
+    """
+    manager = coordinator.manager
+    try:
+        origin = get_url(
+            hass, allow_internal=True, allow_external=False, allow_cloud=False,
+            prefer_external=False, require_ssl=True,
+        )
+        base = validate_base(origin)
+    except (NoURLAvailableError, ValueError, TypeError) as exc:
+        manager.webhook_status = "unavailable_local_https"
+        manager._append("webhook", "system", "homeassistant", "unavailable_local_https")
+        await manager._save()
+        _LOGGER.info("Local trusted HTTPS Home Assistant URL unavailable; polling remains enabled")
+        return
+    try:
+        await configure(hass, coordinator, base)
+        manager.webhook_status = "registered"
+        manager._append("webhook", "system", "homeassistant", "registered")
+    except Exception as exc:
+        manager.webhook_status = "registration_failed"
+        manager._append("webhook", "system", "homeassistant", "registration_failed")
+        _LOGGER.warning("Android SMS webhook auto-registration failed (%s); polling remains enabled", type(exc).__name__)
+    await manager._save()
+
+
 async def configure(hass, coordinator, base: str) -> None:
-    """Configure remote phone webhook registrations. Never touch other clients' IDs."""
+    """Idempotently register this HA integration's events (never Ubuntu's)."""
     base = validate_base(base)
     manager = coordinator.manager
-    if manager.callback_base and manager.callback_base != base:
-        raise ValueError("Changing the webhook HTTPS origin requires explicit deregistration of old remote subscriptions")
     is_new = manager.webhook_id is None
     secret = manager.webhook_id or webhook.async_generate_id()
     if is_new:
-        # Receiver must exist before Android registration can emit callbacks.
+        # Receiver exists before Android can deliver any event.
         webhook.async_register(
             hass, DOMAIN, coordinator.entry.title, secret,
             _handler(coordinator), local_only=True, allowed_methods=["POST"],
         )
-    if is_new:
-        # Persist ID first so partial remote registration can safely be retried.
+        # Persist secret before remote registration, including partial failures.
         manager.webhook_id = secret
         await manager._save()
     url = f"{base}/api/webhook/{secret}"
-    try:
-        existing = await coordinator.client.list_webhooks()
-        ids = {str(x.get("id")) for x in existing}
-        for kind in EVENTS:
-            key = f"{DOMAIN}_{coordinator.entry.entry_id}_{kind.split(':')[1]}"
-            if key not in ids:
-                await coordinator.client.add_webhook(key, url, kind)
-    except Exception:
-        # Some remote subscriptions may already exist. Keep the stable local
-        # endpoint and secret so the administrator may explicitly retry.
-        raise
-    manager.webhook_id = secret
+    existing = await coordinator.client.list_webhooks()
+    current = {str(x.get("id")): x for x in existing if isinstance(x, dict)}
+    for kind in EVENTS:
+        key = registration_id(coordinator.entry.entry_id, kind)
+        hook = current.get(key)
+        if hook is None or hook.get("url") != url or hook.get("event") != kind:
+            await coordinator.client.add_webhook(key, url, kind)
     manager.callback_base = base
+    manager.webhook_status = "registered"
     await manager._save()

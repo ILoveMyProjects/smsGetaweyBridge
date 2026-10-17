@@ -15,7 +15,8 @@ from .api import GatewayClient, GatewayError
 from .actions import send_one, send_template
 from .frontend import setup_frontend
 from .manager import BridgeManager
-from .webhooks import setup_webhook, unload_webhook
+from .webhooks import auto_configure, setup_webhook, unload_webhook
+from .template_actions import update_template_actions
 from .const import (
     CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME,
     DOMAIN, EVENT_SMS_QUEUED, SERVICE_SEND_SMS,
@@ -35,8 +36,10 @@ TEMPLATE_SCHEMA = vol.Schema({
 })
 
 SEND_SCHEMA = vol.Schema({
-    vol.Required("phone_number"): cv.string,
-    vol.Required("message"): cv.string,
+    vol.Optional("phone_number"): cv.string,
+    vol.Optional("message"): cv.string,
+    vol.Optional("template"): cv.string,
+    vol.Optional("variables", default={}): dict,
     vol.Optional("entry_id"): cv.string,
 })
 
@@ -58,20 +61,38 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         raise ServiceValidationError("Specify entry_id if zero or multiple gateways are configured")
 
     async def send_sms(call: ServiceCall) -> None:
-        coordinator = target(call.data.get("entry_id"))
-        number = call.data["phone_number"].strip()
-        body = call.data["message"]
+        # Both actions show a live template list. A selected template always wins
+        # over direct phone/message fields (no accidental double-send).
+        selected = (call.data.get("template") or "").strip()
+        if selected:
+            entry_id, key = (selected.split("::", 1) if "::" in selected else
+                             (call.data.get("entry_id"), selected))
+            coordinator = target(entry_id)
+            try:
+                await send_template(coordinator, key, call.data.get("variables", {}))
+            except ValueError as exc:
+                raise ServiceValidationError(str(exc)) from exc
+            except GatewayError as exc:
+                raise HomeAssistantError("SMS send status uncertain; check gateway before retrying") from exc
+            return
+        number = (call.data.get("phone_number") or "").strip()
+        body = (call.data.get("message") or "")
         if not number or not body.strip():
-            raise ServiceValidationError("Recipient and message must not be empty")
+            raise ServiceValidationError("Enter a recipient and message, or choose a saved SMS template")
+        coordinator = target(call.data.get("entry_id"))
         try:
             await send_one(coordinator, number, body)
         except GatewayError as exc:
             raise HomeAssistantError(str(exc)) from exc
 
     async def send_named_template(call: ServiceCall) -> None:
-        coordinator = target(call.data.get("entry_id"))
+        template_key = call.data["template"]
+        entry_id = call.data.get("entry_id")
+        if "::" in template_key:
+            entry_id, template_key = template_key.split("::", 1)
+        coordinator = target(entry_id)
         try:
-            await send_template(coordinator, call.data["template"], call.data["variables"])
+            await send_template(coordinator, template_key, call.data["variables"])
         except ValueError as exc:
             raise ServiceValidationError(str(exc)) from exc
         except GatewayError as exc:
@@ -103,6 +124,9 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     await coordinator.async_config_entry_first_refresh()
     setup_webhook(hass, coordinator)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    await update_template_actions(hass)
+    # Local HTTPS-only, never external cloud or manual pasted URL.
+    await auto_configure(hass, coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -112,4 +136,5 @@ async def async_unload_entry(hass: HomeAssistant, entry) -> bool:
         coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
         if coordinator is not None:
             unload_webhook(hass, coordinator)
+            await update_template_actions(hass)
     return unload_ok

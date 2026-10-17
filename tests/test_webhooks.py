@@ -9,6 +9,11 @@ from types import SimpleNamespace
 ROOT=Path(__file__).resolve().parents[1]/'custom_components/smsgetaweybridge'
 package=types.ModuleType('bridge_webhooks_test');package.__path__=[str(ROOT)]
 sys.modules['bridge_webhooks_test']=package
+network_stub=types.ModuleType('homeassistant.helpers.network')
+class NoURLAvailableError(Exception): pass
+network_stub.NoURLAvailableError=NoURLAvailableError
+network_stub.get_url=lambda *a, **kw:'https://ha.example.lan:8123'
+sys.modules['homeassistant.helpers.network']=network_stub
 components=sys.modules.setdefault('homeassistant.components',types.ModuleType('homeassistant.components'))
 webhook_stub=types.ModuleType('homeassistant.components.webhook')
 registrations=[]
@@ -29,12 +34,14 @@ class API:
 class Manager:
     def __init__(self):self.webhook_id=None;self.callback_base=None;self.saved=0
     async def _save(self):self.saved+=1
+    def _append(self,*args):pass
 
 class HooksTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         registrations.clear()
         self.api=API()
         self.manager=Manager()
+        self.manager.webhook_status="not_configured"
         self.c=SimpleNamespace(client=self.api,manager=self.manager,entry=SimpleNamespace(entry_id='ABC',title='S9'))
 
     async def test_https_only(self):
@@ -46,6 +53,7 @@ class HooksTest(unittest.IsolatedAsyncioTestCase):
     async def test_first_configuration_registers_all_events(self):
         await Hooks.configure(None,self.c,'https://ha.example.lan:8123')
         self.assertEqual(len(self.api.hooks),4)
+        self.assertTrue(all(len(h['id'])==36 for h in self.api.hooks))
         self.assertEqual(len({x['event'] for x in self.api.hooks}),4)
         self.assertTrue(all(x['url'].startswith('https://ha.example.lan:8123/api/webhook/') for x in self.api.hooks))
         self.assertTrue(registrations[0][1]['local_only'])
@@ -62,8 +70,25 @@ class HooksTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.api.hooks),4)
         self.assertTrue(all(x['url'].endswith(self.manager.webhook_id) for x in self.api.hooks))
 
-    async def test_reject_change_origin(self):
+    async def test_update_origin_replaces_only_matching_subscription(self):
         await Hooks.configure(None,self.c,'https://ha.example.lan')
-        with self.assertRaises(ValueError):await Hooks.configure(None,self.c,'https://new.example.lan')
+        # Emulate the API's documented upsert behaviour.
+        self.api.hooks=[]
+        await Hooks.configure(None,self.c,'https://new.example.lan')
+        self.assertTrue(all(x['url'].startswith('https://new.example.lan') for x in self.api.hooks))
+
+    async def test_autoconfigure_uses_local_https_only(self):
+        await Hooks.auto_configure(None,self.c)
+        self.assertEqual(self.manager.webhook_status,'registered')
+        self.assertEqual(len(self.api.hooks),4)
+
+    async def test_autoconfigure_falls_back_without_https(self):
+        original=Hooks.get_url
+        Hooks.get_url=lambda *a,**kw: 'http://192.168.1.100:8123'
+        try:
+            await Hooks.auto_configure(None,self.c)
+            self.assertEqual(self.manager.webhook_status,'unavailable_local_https')
+            self.assertEqual(self.api.hooks,[])
+        finally:Hooks.get_url=original
 
 if __name__=='__main__': unittest.main()

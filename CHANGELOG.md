@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 — Automation templates, guided admin panel and automatic local webhooks
+
+- Display saved SMS templates as live choices in both standard Home Assistant send actions, with recipient group and required variables listed.
+- Register individual actions for each saved template; variable names become separate form fields in the visual automation editor.
+- Update action descriptions immediately after template edits and remove deleted template actions.
+- Redesign sidebar Overview, Templates & Groups and Activity & Logs with inline help, editing, variable forms and quick-send composer.
+- Automatically register HA-owned SMS webhook subscriptions after successful Local Server login, provided an internal trusted HTTPS URL is available; otherwise continue polling with a visible status.
+- Use stable UUID-sized webhook IDs and never modify another client's webhook IDs.
+- No installations or changes to the Android device, Ubuntu, or Home Assistant host as part of the release build.
+
+
 ## 0.2.1 — Preview: HACS/Hassfest CI compatibility fixes
 
 - Declare the config-entry-only `CONFIG_SCHEMA` required by Hassfest for `async_setup` integrations.

@@ -56,7 +56,7 @@ def prepare_release(tag: str, out: Path) -> tuple[Path, Path, Path]:
     notes.write_text(f'# smsGetaweyBridge {tag}\n\n' + match.group('notes').strip() +
                      '\n\n**Preview**: live Home Assistant + Android integration tests are still required.\n'
                      if version.startswith('0.') else
-                     f'# smsGetaweyBridge {tag}\n\n' + match.group('notes').strip() + '\n',
+                     f'# smsGetaweyBridge {tag}\n\n' + match.group('notes').strip() + '\n\n**Live HA/Android device testing is still required.**\n',
                      encoding='utf-8')
     return archive, checksum, notes
 

@@ -7,7 +7,7 @@
 
 **Documentation:** English (this page) · [Polski](docs/README_PL.md) · [Security guide](docs/SECURITY.md) · [Release procedure](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-> **Preview release (v0.2.1).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
+> **Release v1.0.0 (awaiting live verification).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
 
 > **GitHub repository setup:** HACS validation also requires a non-empty repository description and topics. Configure these under GitHub repository **About → Edit**; README text and `manifest.json` do not change those GitHub settings. See [Releasing](docs/RELEASING.md).
 
@@ -18,9 +18,9 @@
 - **Send SMS:** Call `smsgetaweybridge.send_sms` in actions and automations.
 - **Receive SMS events:** Polls the gateway's `GET /inbox` endpoint for new incoming messages.
 - **Track outgoing status:** Polls `GET /messages` for gateway-reported status changes, including intermediate history where available.
-- **Admin panel:** dedicated `SMS Bridge` sidebar page with **Overview**, **Templates**, and **Logs**.
-- **Saved templates and groups:** name groups of up to 30 recipient phone numbers and create text templates with `$variable` substitutions; send via a GUI or the `smsgetaweybridge.send_template` action.
-- **Optional webhooks:** register a local-only HTTPS endpoint for SMS events; continuous polling remains the fallback. HTTPS certificate must be trusted by the phone.
+- **Guided admin panel:** sidebar **SMS Bridge** with **Overview**, **Templates & Groups**, **Activity & Logs**, inline help, an SMS composer, template editing and variable-specific forms.
+- **Saved templates and groups:** manage and edit up to 50 named groups/templates in the sidebar. Required `$variables` are detected and displayed. The **Send SMS** and **Send saved SMS template** action editors show a live drop-down of saved templates, including each group and required variables. Every saved template also has a dedicated Home Assistant action with individual variable input fields. **Template selection is populated at runtime**: re-open the automation editor after adding or changing templates.
+- **Automatic local webhooks:** after you enter Local Server credentials, the integration attempts to register webhook subscriptions on the phone automatically, using the internal Home Assistant HTTPS URL. No URL copying or pasting. If local trusted HTTPS is unavailable or registration fails, polling remains active; the dashboard shows the reason.
 - **Origin tracking:** outgoing requests made by HA are recorded by their message ID; other outgoing messages show `external/unknown`, not automatically `Ubuntu`.
 - **Diagnostics:** linked HA device entities, capped private activity log and status indicators.
 - **Independent clients:** An Ubuntu Server SMS manager can connect to the **same phone** directly; the two systems are independent. Messages sent by either client may appear in shared gateway history.
@@ -66,9 +66,9 @@ Replace the sample phone number with a number you control. **SMS transmission ma
 
 An API acknowledgment means the gateway **accepted the request**, **not** that the operator delivered the SMS. Delivery reporting depends on the mobile network and device.
 
-## Saved recipient groups and templates (v0.2)
+## Saved recipient groups and templates (v1.0.0)
 
-From the left sidebar select **SMS Bridge → Templates**. Create a recipient group using international E.164 phone numbers, e.g. `+441234567890`. Then create a template referencing the group. Use placeholders like `$device` or `${device}` (escaped dollar: `$$`). The admin panel lets you select the chosen template and supply variables as JSON before confirming an SMS send.
+From the left sidebar select **SMS Bridge → Templates & Groups**. Create a recipient group using international E.164 phone numbers, e.g. `+441234567890`. Then create a template referencing the group. Use placeholders like `$device` or `${device}` (escaped dollar: `$$`). The admin panel has a visible template list with Edit/Delete controls, and automatically creates text fields for the variables used by the chosen template.
 
 To send a saved template from an HA automation:
 
@@ -82,53 +82,37 @@ data:
 
 The template and recipient group must already exist in the sidebar manager. This action can submit one SMS for each group member, and **partial sending is possible if a later recipient fails**. Check the gateway before retrying. Use unique entry IDs when controlling multiple phones.
 
-## Optional local HTTPS webhook
+## Automatic local HTTPS webhook registration
 
-The default remains **local polling**, and no inbound webhook server or public service is required. To enable quicker events: open **SMS Bridge → Overview**, enter the **internal HTTPS origin** of Home Assistant (for example `https://ha.example.lan:8123`) and click **Register local webhooks**.
+On installation or reconfiguration, `smsGetaweyBridge` automatically discovers the Home Assistant **internal HTTPS URL** and attempts to register four local webhook subscriptions (`sms:received`, `sms:sent`, `sms:delivered`, `sms:failed`) via the Android Local Server API. No manual URL editing or copying is needed. Only HA-owned webhook IDs are created or refreshed; the Ubuntu manager's webhook subscriptions are untouched. **Polling remains enabled** for resilience.
 
-**Requirements:** your Galaxy S9 must trust the TLS certificate and be allowed by its firewall to connect to the HA host; Home Assistant must see the phone as a local connection for its `local_only=True` webhook policy. The secure Android build rejects untrusted HTTP webhook targets. The integration creates a secret webhook ID, registers separate `sms:received`, `sms:sent`, `sms:delivered`, `sms:failed` subscriptions on the **phone**, and does not use cloudhooks or expose new router ports. Polling remains active, so HA events can occasionally repeat: deduplicate by message ID/state. Reconfiguration to a different HTTPS origin is blocked until old subscriptions are explicitly removed; do not manually copy the secret webhook URL into public systems.
+**Important:** The Android Secure build requires a certificate it trusts. If HA is only accessible via HTTP on the LAN, registration is **not possible** without setting up a valid internal HTTPS endpoint in Home Assistant/network infrastructure. The bridge will report `unavailable_local_https` and keep polling; it will **not** disable Android TLS security, expose a public address or configure your router. It cannot automatically create TLS certificates or change firewall rules. If the registration fails, the panel reports `registration_failed`. **Registered only means the Android API accepted the subscription; actual webhook delivery still needs a live test.**
 
-The webhook feature may fail to register in a standard LAN without a private certificate trust arrangement; it is optional. **No public internet is required.**
+### Templates from the visual automation editor
 
-## Incoming messages and outgoing status events
+Create a recipient group and a template in **SMS Bridge → Templates & Groups**. Example: group `ops`, template key `server_alert`, body `Server $host is $status`.
 
-The integration fires these Home Assistant events after polling, and optionally from local webhooks:
+Then in **Settings → Automations & scenes → Add action**, choose one of:
 
-| Event type | Useful fields | Meaning |
-| --- | --- | --- |
-| `smsgetaweybridge_sms_received` | `entry_id`, `message_id`, `sender`, `message`, `received_at` | Newly detected incoming SMS; content may be a preview |
-| `smsgetaweybridge_sms_status` | `entry_id`, `message_id`, `state`, `changed_at` | Outgoing gateway state change; not always proof of delivery |
-| `smsgetaweybridge_sms_queued` | `entry_id`, `message_id`, `phone_number` | SMS request accepted by the API from Home Assistant |
+- **smsGetaweyBridge: Send SMS (direct or saved template)** — choose `server_alert` from the **Saved template** drop-down and enter `host`/`status` in the **Template variables** mapping. The option label lists the group and exact required variables. For a one-off SMS, leave Saved template blank and enter Phone number and Message.
+- **smsGetaweyBridge: Send saved SMS template** — the same live drop-down, with group and variable names shown.
+- **smsGetaweyBridge: Send SMS: server_alert** — a dedicated action created automatically for this template, with separate `host` and `status` text fields. This is the simplest no-guessing option. After editing a template, re-open the action editor to refresh its fields.
 
-Example: notify an administrator when an incoming SMS is detected **without displaying its body**:
+**Never press Run repeatedly after a timeout**: sending may have succeeded at the phone although Home Assistant did not receive its acknowledgement. The integration does not automatically retry paid SMS sending.
 
-```yaml
-alias: "SMS Gateway - incoming message"
-triggers:
-  - trigger: event
-    event_type: smsgetaweybridge_sms_received
-actions:
-  - action: persistent_notification.create
-    data:
-      title: "Incoming SMS"
-      message: "SMS received from {{ trigger.event.data.sender }}"
-mode: queued
-```
-
-Example: react to a reported state change:
+Example of the dynamic action (the exact action ID is assigned by Home Assistant from the configured gateway entry):
 
 ```yaml
-alias: "SMS Gateway - status"
-triggers:
-  - trigger: event
-    event_type: smsgetaweybridge_sms_status
-actions:
-  - action: persistent_notification.create
-    data:
-      title: "SMS status"
-      message: "{{ trigger.event.data.message_id }}: {{ trigger.event.data.state }}"
-mode: queued
+# Use the Home Assistant visual action picker; do not guess the action ID.
+action: smsgetaweybridge.send_template
+data:
+  template: "YOUR_ENTRY_ID::server_alert"
+  variables:
+    host: "nas"
+    status: "offline"
 ```
+
+If there are multiple configured Android gateways, each drop-down choice identifies its own configuration entry; selecting a template does not route it via Ubuntu.
 
 ## Data flow and coexistence with Ubuntu
 
@@ -146,7 +130,7 @@ Both clients can send via the same phone. Polling `/inbox` and `/messages` does 
 
 ## Operating limits and reliability
 
-- **Polling interval:** every 30 seconds; inbound HTTPS webhooks are optional.
+- **Polling interval:** every 30 seconds; HTTPS webhook registration is automatic only when the local HA URL supports valid HTTPS.
 - **Pagination:** fetches up to 10,000 inbox results and 10,000 outgoing records per poll. If a category exceeds the safety limit, it reports a synchronization error instead of silently truncating. Exhaustive outgoing scans can burden older phones.
 - **Restart/migration:** deduplication checkpoints are saved in HA storage. Initial synchronization and upgrade from v0.1.0 establish a baseline without replaying old messages; the migration cutover may miss messages received during the cutover.
 - **Events are at-least-once:** after a crash/restart some events can repeat. Consumers that require one-time behavior must deduplicate by `message_id` or `(message_id, state, changed_at)`.

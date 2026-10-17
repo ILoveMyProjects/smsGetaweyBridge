@@ -11,7 +11,7 @@ path = Path(__file__).resolve().parents[1] / 'custom_components/smsgetaweybridge
 for mod in ('voluptuous', 'homeassistant', 'homeassistant.const', 'homeassistant.core',
             'homeassistant.exceptions', 'homeassistant.helpers',
             'homeassistant.helpers.config_validation', 'homeassistant.helpers.aiohttp_client',
-            'homeassistant.helpers.storage'):
+            'homeassistant.helpers.storage', 'homeassistant.helpers.service'):
     sys.modules.setdefault(mod, types.ModuleType(mod))
 
 v = sys.modules['voluptuous']
@@ -28,6 +28,7 @@ errors.HomeAssistantError = type('HomeAssistantError', (Exception,), {})
 errors.ServiceValidationError = type('ServiceValidationError', (Exception,), {})
 sys.modules['homeassistant.helpers.config_validation'].string = str
 sys.modules['homeassistant.helpers.config_validation'].config_entry_only_config_schema = lambda domain: {'config_entry_only': domain}
+sys.modules['homeassistant.helpers.service'].async_set_service_schema = lambda *args, **kwargs: None
 sys.modules['homeassistant.helpers.aiohttp_client'].async_get_clientsession = lambda h: object()
 # Simulate only the GUI/webhook bootstrap: the actual services and manager run.
 frontend_stub = types.ModuleType('smsgetaweybridge.frontend')
@@ -35,6 +36,8 @@ async def setup_frontend(_hass): pass
 frontend_stub.setup_frontend = setup_frontend
 sys.modules['smsgetaweybridge.frontend'] = frontend_stub
 webhook_stub = types.ModuleType('smsgetaweybridge.webhooks')
+async def auto_configure(*args): pass
+webhook_stub.auto_configure = auto_configure
 webhook_stub.setup_webhook = lambda *args: None
 webhook_stub.unload_webhook = lambda *args: None
 sys.modules['smsgetaweybridge.webhooks'] = webhook_stub
@@ -59,6 +62,9 @@ class Services:
 
     def async_register(self, domain, name, handler, schema=None):
         self.handlers[(domain, name)] = handler
+
+    def async_remove(self, domain, name):
+        self.handlers.pop((domain, name), None)
 
 
 class Client:
