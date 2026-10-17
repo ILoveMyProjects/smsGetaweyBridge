@@ -1,0 +1,25 @@
+send_sms:
+  name: Send SMS
+  description: Queue one SMS through the configured local Galaxy S9 SMS Gateway.
+  fields:
+    phone_number:
+      name: Phone number
+      description: Recipient phone number in international format, e.g. +48123123123.
+      required: true
+      example: "+48123123123"
+      selector:
+        text: {}
+    message:
+      name: Message
+      description: Plain text SMS body.
+      required: true
+      example: "Alarm activated"
+      selector:
+        text:
+          multiline: true
+    entry_id:
+      name: Config entry ID
+      description: Optional. Required only when multiple SMS Gateways are configured.
+      required: false
+      selector:
+        text: {}

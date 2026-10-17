@@ -1,0 +1,13 @@
+{
+  "domain": "smsgetaweybridge",
+  "name": "smsGetaweyBridge",
+  "after_dependencies": [],
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/REPLACE_WITH_GITHUB_USER/smsGetaweyBridge",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/REPLACE_WITH_GITHUB_USER/smsGetaweyBridge/issues",
+  "requirements": [],
+  "version": "0.1.1"
+}

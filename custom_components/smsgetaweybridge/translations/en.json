@@ -1,0 +1,39 @@
+{
+  "title": "smsGetaweyBridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to SMS Gateway Local Server",
+        "description": "Enter the Local Server details shown on your Android device. Does not use cloud or SSH.",
+        "data": {
+          "host": "Phone IP address / hostname",
+          "port": "Local Server port",
+          "username": "Local Server username",
+          "password": "Local Server password",
+          "use_ssl": "Use HTTPS (valid certificate required)"
+        }
+      },
+      "reconfigure": {
+        "title": "Change SMS Gateway connection",
+        "description": "Change Local Server details. Leave password empty to keep the existing one.",
+        "data": {
+          "host": "Phone IP address / hostname",
+          "port": "Local Server port",
+          "username": "Local Server username",
+          "password": "Local Server password",
+          "use_ssl": "Use HTTPS (valid certificate required)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Incorrect username or password",
+      "cannot_connect": "Cannot connect to Local Server or endpoint missing",
+      "invalid_response": "Invalid API response; check your SMS Gateway version",
+      "already_configured": "Another gateway already uses this address"
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured",
+      "reconfigure_successful": "Gateway connection updated"
+    }
+  }
+}

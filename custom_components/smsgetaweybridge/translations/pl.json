@@ -1,0 +1,39 @@
+{
+  "title": "smsGetaweyBridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z SMS Gateway Local Server",
+        "description": "Wpisz dane Local Server z aplikacji na telefonie. Integracja nie używa chmury ani SSH.",
+        "data": {
+          "host": "Adres IP telefonu / nazwa hosta",
+          "port": "Port Local Server",
+          "username": "Nazwa użytkownika Local Server",
+          "password": "Hasło Local Server",
+          "use_ssl": "Używaj HTTPS (wymagany poprawny certyfikat)"
+        }
+      },
+      "reconfigure": {
+        "title": "Zmień połączenie SMS Gateway",
+        "description": "Zmień dane Local Server. Puste hasło pozostawia zapisane hasło.",
+        "data": {
+          "host": "Adres IP telefonu / nazwa hosta",
+          "port": "Port Local Server",
+          "username": "Nazwa użytkownika Local Server",
+          "password": "Hasło Local Server",
+          "use_ssl": "Używaj HTTPS (wymagany poprawny certyfikat)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy użytkownik lub hasło",
+      "cannot_connect": "Brak połączenia z Local Server lub endpointem API",
+      "invalid_response": "Nieprawidłowa odpowiedź API; sprawdź wersję SMS Gateway",
+      "already_configured": "Inna bramka korzysta już z tego adresu"
+    },
+    "abort": {
+      "already_configured": "Ta bramka jest już skonfigurowana",
+      "reconfigure_successful": "Połączenie z bramką zostało zmienione"
+    }
+  }
+}
