@@ -18,7 +18,7 @@ Zalecana rezerwacja DHCP dla telefonu. **Nie wpisujemy IP na sztywno w skryptach
 
 ## 2. Home Assistant
 
-Zobacz instrukcję HACS w [README](../README.md#instalacja-z-hacs-własne-repozytorium).
+Zobacz instrukcję HACS w [README](../README.md#install-using-hacs-custom-repository).
 
 W formularzu podaj dane ręcznie. Program nie próbuje używać SSH, Termuxa ani roota i nie korzysta z chmury. Testuje HTTP API — bez wysyłania płatnego SMS.
 

@@ -1,18 +1,96 @@
-name: Python checks
+name: Validate and Release
+
 on:
   push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
   pull_request:
+  workflow_dispatch:
+
+# Do not grant write permissions to pull requests or validation jobs.
+permissions:
+  contents: read
+
 jobs:
   tests:
+    name: Python tests and static checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install test dependency
+      - name: Install dependencies used by offline tests
         run: python -m pip install aiohttp
       - name: Compile Python
-        run: python -m compileall -q custom_components
+        run: python -m compileall -q custom_components tests tools
+      - name: Validate JSON files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for file in sorted(Path('.').rglob('*.json')):
+              json.loads(file.read_text(encoding='utf-8'))
+              print('Valid:', file)
+          PY
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Release version and ZIP build test
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python tools/build_release.py --tag "$RELEASE_TAG" --output-dir /tmp/smsgetaweybridge-ci
+
+  validate-hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate integration repository
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  validate-hassfest:
+    name: Home Assistant Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  release:
+    name: Create GitHub Release after successful checks
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - tests
+      - validate-hacs
+      - validate-hassfest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build version-checked manual installation package and notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python tools/build_release.py --tag "$RELEASE_TAG" --output-dir dist
+      - name: Publish GitHub Release with assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--title "smsGetaweyBridge ${RELEASE_TAG}" --notes-file dist/RELEASE_NOTES.md --verify-tag)
+          # Preview releases until the project reaches its first stable major version.
+          if [[ "$RELEASE_TAG" == v0.* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" \
+            "dist/smsGetaweyBridge-${RELEASE_TAG}.zip" \
+            dist/SHA256SUMS.txt \
+            "${args[@]}"

@@ -1,131 +1,155 @@
 # smsGetaweyBridge
 
-**Niezależna integracja Home Assistant instalowana przez HACS dla [SMS Gateway for Android](https://github.com/capcom6/android-sms-gateway) — Local Server.**
+[![Tests / HACS / Hassfest](https://github.com/ILoveMyProjects/smsGetaweyBridge/actions/workflows/tests.yml/badge.svg)](https://github.com/ILoveMyProjects/smsGetaweyBridge/actions/workflows/tests.yml)
+[![GitHub Releases](https://img.shields.io/github/v/release/ILoveMyProjects/smsGetaweyBridge?include_prereleases)](https://github.com/ILoveMyProjects/smsGetaweyBridge/releases)
 
-> [English documentation](docs/README_EN.md) · [Instalacja PL](docs/INSTALACJA_PL.md) · [Bezpieczeństwo PL](docs/BEZPIECZENSTWO_PL.md)
+**A local-first Home Assistant custom integration for [SMS Gateway for Android](https://github.com/capcom6/android-sms-gateway).** Install it through HACS, configure your Android phone's **Local Server** manually, and use its SMS capabilities from Home Assistant.
 
-## Co robi
+**Documentation:** English (this page) · [Polski](docs/README_PL.md) · [Security guide](docs/SECURITY.md) · [Release procedure](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-- Łączy **Home Assistant bezpośrednio** z SMS Gateway działającym na telefonie Android.
-- Umożliwia wysłanie SMS z akcji `smsgetaweybridge.send_sms`.
-- Co 30 sekund pobiera wiadomości odebrane z `GET /inbox` i statusy wysłanych z `GET /messages`.
-- Udostępnia zdarzenia: `smsgetaweybridge_sms_received`, `smsgetaweybridge_sms_status`, `smsgetaweybridge_sms_queued`.
-- Dodaje prostą diagnostykę: binarny czujnik dostępności, liczba ostatnich odebranych i wysłanych wiadomości oraz najnowszy status.
-- Nie używa **SSH**, **Termuxa**, **Magiska**, chmury dostawcy ani pośrednictwa Ubuntu.
-- Ubuntu Server może równolegle łączyć się z **tym samym** API telefonu; jego dostęp nie jest zarządzany przez tę integrację.
+> **Preview release (v0.1.1).** Offline tests have run, but the integration has **not** been validated end-to-end on a live Home Assistant installation and Android SMS Gateway. Test it with your own device before using it for critical alerts. The GitHub repository and release availability must be checked on GitHub after uploading this project.
 
-**Nazwa widoczna w GUI:** `smsGetaweyBridge` (dokładnie taka pisownia). **Wewnętrzna nazwa domeny HA:** `smsgetaweybridge` (zgodnie z regułami nazw integracji HA).
+## Features
 
-## Schemat
+- **Direct connection:** Home Assistant talks straight to the SMS Gateway Local Server on the Android phone. No Ubuntu proxy, SSH, Magisk, Termux, or cloud account is required.
+- **Graphical configuration:** Host/IP, port, username, password, and optional HTTPS via the Home Assistant integration config flow. A reconfigure flow supports updating connection details.
+- **Send SMS:** Call `smsgetaweybridge.send_sms` in actions and automations.
+- **Receive SMS events:** Polls the gateway's `GET /inbox` endpoint for new incoming messages.
+- **Track outgoing status:** Polls `GET /messages` for gateway-reported status changes, including intermediate history where available.
+- **Diagnostics:** Gateway online indicator and counters for the most recently synchronized inbox/outgoing results.
+- **Independent clients:** An Ubuntu Server SMS manager can connect to the **same phone** directly; the two systems are independent. Messages sent by either client may appear in shared gateway history.
 
-```text
-                    [Galaxy S9 / SMS Gateway Local Server]
-                          IP telefonu:8080
-                            /           \
-                    REST API            REST API
-                       /                   \
-       [Home Assistant / smsGetaweyBridge]  [Ubuntu Server / niezależny SMS Manager]
-```
+The project is a **HACS custom integration**, not a Home Assistant Supervisor add-on/App. There is no built-in full SMS inbox dashboard.
 
-## Wymagania
+## Requirements
 
-- Home Assistant obsługujący współczesne custom integrations (zalecana aktualna wersja).
-- HACS, jeżeli chcesz instalować przez HACS.
-- SMS Gateway for Android z włączonym **Local Server** i uprawnieniami SMS. Dokumentowane endpointy: `/message`, `/messages`, `/inbox`.
-- Dostęp sieciowy **z Home Assistant do telefonu** na porcie Local Server (zwykle 8080).
-- Lokalny **username/password** pokazany w SMS Gateway.
-- Komunikacja pozostaje w sieci prywatnej. Dla HTTP Basic Auth połączenie nie jest szyfrowane — patrz [bezpieczeństwo](docs/BEZPIECZENSTWO_PL.md).
+- Home Assistant with support for custom integrations and GUI config flows (the current HA version is recommended).
+- [HACS](https://www.hacs.xyz/) to install using the UI (or install manually).
+- Android phone with [SMS Gateway for Android](https://github.com/capcom6/android-sms-gateway) installed, configured for **Local Server**, and granted the SMS permissions required by the app.
+- Network access **from Home Assistant to the phone's Local Server** (often TCP port `8080`; use the value shown in the app).
+- **Local Server** username and password from the phone app. Do not use credentials for any cloud server.
 
-## Instalacja z HACS (własne repozytorium)
+Recommended: reserve the phone's IP in your router's DHCP configuration, or use a stable local hostname. Do **not** expose the Local Server to the public internet.
 
-1. Utwórz publiczne repozytorium GitHub i wgraj **zawartość** tego archiwum do katalogu głównego repozytorium.
-2. **Obowiązkowo przed publikacją:** uruchom `python tools/prepare_github.py --owner TWOJ_LOGIN_GITHUB` (na komputerze z plikami repozytorium). Polecenie wpisuje prawdziwe odnośniki i `codeowners` do manifestu, nie pobiera niczego i nie łączy się z telefonem. Repozytorium musi nazywać się `smsGetaweyBridge`; przy innej nazwie popraw URL ręcznie.
-3. W Home Assistant: **HACS → trzy kropki → Custom repositories / Własne repozytoria**; wklej URL repozytorium i wybierz typ **Integration**.
-4. Wyszukaj `smsGetaweyBridge`, pobierz i uruchom ponownie Home Assistant.
-5. **Ustawienia → Urządzenia i usługi → Dodaj integrację → smsGetaweyBridge**.
-6. Podaj **IP / hostname**, **port**, **username**, **password**, w razie potrzeby **HTTPS**.
-7. Test konfiguracji odpytuje tylko `/messages` i `/inbox` (nie wysyła testowego SMS).
+## Install using HACS (custom repository)
 
-> Repozytorium nie zostało automatycznie opublikowane na GitHub. Wgranie plików i zgłoszenie do katalogu HACS pozostaje zadaniem właściciela repozytorium. Integrację można od razu dodać w HACS jako własne repozytorium po opublikowaniu i poprawieniu linków.
+1. In Home Assistant open **HACS** and add the repository `https://github.com/ILoveMyProjects/smsGetaweyBridge` as a **Custom repository** with category **Integration**.
+2. Install **smsGetaweyBridge** through HACS and restart Home Assistant when prompted.
+3. Go to **Settings → Devices & services → Add integration** and search for **smsGetaweyBridge**.
+4. Enter the phone's **Host**, **Port**, **Local Server username**, **Local Server password**, and HTTPS choice.
+5. Home Assistant probes `GET /messages` and `GET /inbox`. **It does not send a paid test SMS** during setup.
 
-### Zmiana IP i danych logowania
+HACS installs source code from the selected GitHub release/tag (or the default branch). The attached GitHub Release ZIP is an **optional manual-install asset**, not a separate Android APK or prerequisite for HACS. A public GitHub Release may be marked as a pre-release while this integration is in preview.
 
-Na karcie integracji w **Ustawienia → Urządzenia i usługi** wybierz **Skonfiguruj ponownie** (Reconfigure), podaj nowy adres i port lub użytkownika. Zostaw pole hasła puste, jeśli hasło się nie zmieniło. Dane są ponownie sprawdzane przez GET bez wysyłania SMS-a.
+**Manual install:** copy `custom_components/smsgetaweybridge` from this repository into `<HA_CONFIG>/custom_components/smsgetaweybridge`; restart Home Assistant and add the integration. If installing from the release ZIP, extract its `custom_components` directory into `<HA_CONFIG>/`.
 
-### Instalacja ręczna bez HACS
+**Change connection details:** on the integration card choose **Reconfigure**. Leave the password blank to keep the currently saved one. No SMS is sent during the connectivity check.
 
-Skopiuj katalog `custom_components/smsgetaweybridge` do `<config>/custom_components/smsgetaweybridge` Home Assistant, uruchom ponownie HA i dodaj integrację z GUI.
+## Send an SMS
 
-## Konfiguracja SMS Gateway na telefonie
-
-1. Zainstaluj SMS Gateway for Android z oficjalnego źródła.
-2. Włącz **Local Server** i aktywuj jego działanie w aplikacji.
-3. Zanotuj IP, port, **Local Server username i password**; nie udostępniaj hasła publicznie.
-4. Zezwól na odczyt/odbiór/wysyłanie SMS zgodnie z wymaganiami aplikacji i wyłącz agresywną optymalizację baterii.
-5. **Nie musisz włączać Cloud Server**. Nie przekierowuj portu Local Server na publiczny internet.
-6. Jeśli masz zaporę firewall per UID aplikacji, dopuść ruch Home Assistant **do** telefonu; to ruch przychodzący do aplikacji. Jej własny ruch wychodzący można nadal ograniczyć osobno.
-
-## Wysyłanie SMS
-
-W Home Assistant w **Narzędzia deweloperskie → Akcje** wybierz `smsgetaweybridge.send_sms`:
+In **Developer Tools → Actions**, or in an automation, call:
 
 ```yaml
 action: smsgetaweybridge.send_sms
 data:
-  phone_number: "+48123123123"
-  message: "Test z Home Assistant"
+  phone_number: "+441234567890"
+  message: "Test from Home Assistant"
 ```
 
-Przy kilku skonfigurowanych bramkach podaj dodatkowo `entry_id` konkretnej konfiguracji. Bez `entry_id` działa tylko przy dokładnie jednej bramce.
+Replace the sample phone number with a number you control. **SMS transmission may incur charges.** If you set up more than one phone, include the appropriate `entry_id` in the action data; when there is only one configured gateway, it is optional.
 
-**Akceptacja żądania przez API ≠ doręczenie SMS.** Zdarzenia statusu pojawiają się po kolejnych odczytach API (jeżeli gateway i operator raportują status).
+An API acknowledgment means the gateway **accepted the request**, **not** that the operator delivered the SMS. Delivery reporting depends on the mobile network and device.
 
-## Odbieranie SMS i statusy
+## Incoming messages and outgoing status events
 
-W Home Assistant automatyzacje mogą reagować na zdarzenia:
+The integration fires these Home Assistant events after polling:
 
-| Zdarzenie | Przykładowe dane | Częstotliwość |
+| Event type | Useful fields | Meaning |
 | --- | --- | --- |
-| `smsgetaweybridge_sms_received` | `sender`, `recipient`, `message`, `message_id`, `received_at`, `sim_number`, `entry_id` | Nowe SMS-y znalezione przy odpytywaniu |
-| `smsgetaweybridge_sms_status` | `message_id`, `state`, `changed_at` (czas statusu lub null), `entry_id` | Historia stanów z API, również przejścia pośrednie |
-| `smsgetaweybridge_sms_queued` | `message_id`, `phone_number`, `entry_id` | Przyjęcie zlecenia wysyłki przez API |
+| `smsgetaweybridge_sms_received` | `entry_id`, `message_id`, `sender`, `message`, `received_at` | Newly detected incoming SMS; content may be a preview |
+| `smsgetaweybridge_sms_status` | `entry_id`, `message_id`, `state`, `changed_at` | Outgoing gateway state change; not always proof of delivery |
+| `smsgetaweybridge_sms_queued` | `entry_id`, `message_id`, `phone_number` | SMS request accepted by the API from Home Assistant |
 
-Przykład [automatyzacji SMS](docs/INSTALACJA_PL.md#automatyzacje).
+Example: notify an administrator when an incoming SMS is detected **without displaying its body**:
 
-### Zmiany i ograniczenia v0.1.1
+```yaml
+alias: "SMS Gateway - incoming message"
+triggers:
+  - trigger: event
+    event_type: smsgetaweybridge_sms_received
+actions:
+  - action: persistent_notification.create
+    data:
+      title: "Incoming SMS"
+      message: "SMS received from {{ trigger.event.data.sender }}"
+mode: queued
+```
 
-- To **integracja HACS**, a nie add-on Supervisor/App, ani rozbudowany menedżer skrzynki SMS z własnym interfejsem listy wiadomości.
-- Odbiór i statusy działają przez **polling co 30 s**; nie ma serwera webhooków. Nie wymaga odbierania HTTPS przez Home Assistant.
-- Integracja pobiera **wszystkie strony wyników** (po 250 rekordów, do 10 000 na odczyt): odebrane SMS-y od zapamiętanego czasu (`from`), a wysłane wiadomości z całej dostępnej historii; po przekroczeniu limitu zgłasza błąd zamiast po cichu pomijać starsze SMS-y. Pełne przeglądanie historii wysłanych SMS-ów co 30 s może być kosztowne dla telefonu z dużą skrzynką. Limit jest celowy, nie gwarantuje obsługi dowolnej liczby wiadomości.
-- Przy pierwszym uruchomieniu oraz przy **migracji danych z 0.1.0** wykonuje bazowy odczyt bez emitowania historycznych zdarzeń. Z tego powodu nowe wiadomości odebrane podczas samego przejścia z 0.1.0 na 0.1.1 mogą nie zostać wyemitowane. Kolejne odczyty używają trwałego kursora czasowego i ID wiadomości z granicy.
-- Sensor liczby SMS pokazuje liczbę rekordów **z ostatniego udanego odczytu** (maksymalnie 10 000), a nie bezwzględną liczbę wiadomości przechowywanych przez operatora.
-- Statusy są odtwarzane z mapy `states` jako osobne zdarzenia z czasem `changed_at`. W razie braku historii możliwe są tylko przejścia zaobserwowane w kolejnych odczytach. Zdarzenia mają semantykę **at-least-once** — awaria między emisją a zapisem może spowodować duplikat; deduplikuj po `message_id` albo `(message_id, state, changed_at)`. Przesunięte w przeszłość znaczniki czasu mogą nie zostać wykryte.
-- API może zwrócić tylko podgląd treści w `contentPreview`; nie gwarantuje pełnego tekstu długich SMS-ów.
-- Nie sprawdzono tej paczki na konkretnym egzemplarzu Galaxy S9 ani uruchomionym Home Assistant. Uruchomienie w produkcji wymaga testów integracyjnych z rzeczywistą bramką.
-- Nie ma MMS, kontaktów, dedykowanej skrzynki SMS w dashboardzie ani automatycznego konfigurowania Androida.
-- Zwykła karta SIM **nie umożliwia** ustawienia nadawcy `HADevMaster` zamiast numeru telefonu.
+Example: react to a reported state change:
 
-## Bezpieczeństwo / prywatność
+```yaml
+alias: "SMS Gateway - status"
+triggers:
+  - trigger: event
+    event_type: smsgetaweybridge_sms_status
+actions:
+  - action: persistent_notification.create
+    data:
+      title: "SMS status"
+      message: "{{ trigger.event.data.message_id }}: {{ trigger.event.data.state }}"
+mode: queued
+```
 
-**SMS-y mogą zawierać dane wrażliwe i kody dostępu.** Treść odebranych SMS jest dostępna w zdarzeniu HA. Nie udostępniaj zdarzeń automatycznie do chmury, niezaufanym integracjom ani publicznych dashboardów. HA Recorder/automatyzacje mogą zachowywać zdarzenia lub je dalej przekazywać. Zadbaj o retencję i dostęp.
+## Data flow and coexistence with Ubuntu
 
-Przy `http://IP:8080` login i hasło HTTP Basic Auth są przesyłane w postaci zakodowanej, **niezaszyfrowanej**. Wybierz izolowany LAN/VLAN lub HTTPS z poprawnym certyfikatem; opcja „Use HTTPS” nie wyłącza weryfikacji certyfikatów. W połączeniach nie są wykonywane automatyczne przekierowania HTTP, aby nie ujawnić danych logowania innemu hostowi.
+```text
+                  Galaxy S9 / SMS Gateway for Android
+                          Local Server (e.g. :8080)
+                         /                        \
+                        / REST API                 \ REST API
+                       v                            v
+         Home Assistant / smsGetaweyBridge    Ubuntu Server SMS Manager
+                 (independent)                    (independent)
+```
 
-Więcej w [docs/BEZPIECZENSTWO_PL.md](docs/BEZPIECZENSTWO_PL.md).
+Both clients can send via the same phone. Polling `/inbox` and `/messages` does not remove messages; however both clients may see the **same** outgoing events regardless of which system submitted them. Be careful not to create circular automations or unintended duplicate sends.
 
-## Publikacja w GitHub
+## Operating limits and reliability
 
-- Uzupełnij metadane prawdziwego właściciela: `python tools/prepare_github.py --owner TWOJ_LOGIN_GITHUB`, sprawdź linki `documentation`, `issue_tracker` i `codeowners` w `manifest.json`. Bez tego repozytorium **nie jest gotowe do publikacji**.
-- Dodaj opis oraz tematy repozytorium, np. `home-assistant`, `hacs`, `sms`, `android`, `smsgateway`.
-- Uruchom testy `python -m unittest discover -s tests -v` i `python -m compileall -q custom_components`.
-- Stwórz GitHub Release `v0.1.1`. Integracja nie musi być na oficjalnej liście HACS — może działać jako **Custom repository**.
-- Jeżeli chcesz zgłosić do domyślnego katalogu HACS, sprawdź dodatkowe wymagania, w tym poprawność manifestu, Hassfest, ikonę marki i odpowiednie działania GitHub Actions.
+- **Polling interval:** every 30 seconds; **no inbound webhook server** is required in Home Assistant.
+- **Pagination:** fetches up to 10,000 inbox results and 10,000 outgoing records per poll. If a category exceeds the safety limit, it reports a synchronization error instead of silently truncating. Exhaustive outgoing scans can burden older phones.
+- **Restart/migration:** deduplication checkpoints are saved in HA storage. Initial synchronization and upgrade from v0.1.0 establish a baseline without replaying old messages; the migration cutover may miss messages received during the cutover.
+- **Events are at-least-once:** after a crash/restart some events can repeat. Consumers that require one-time behavior must deduplicate by `message_id` or `(message_id, state, changed_at)`.
+- **Out-of-order updates:** a late status with an older timestamp may not be detected. Deleted messages cannot be reconstructed from the phone.
+- **SMS content:** the upstream API may provide only `contentPreview`, not the entire message. This integration does not support MMS or arbitrary sender IDs such as `HADevMaster` on a regular SIM.
+- **Scope:** there is no dedicated SMS conversations GUI or central Ubuntu SMS manager in this repository.
 
-## Dokumentacja API / inspiracje
+## Security
 
-- [SMS Gateway for Android](https://github.com/capcom6/android-sms-gateway)
-- [Oficjalna dokumentacja API (OpenAPI)](https://capcom6.github.io/android-sms-gateway/)
-- [Wymagania HACS dla integracji](https://www.hacs.dev/docs/publish/integration/)
-- [Home Assistant: custom integrations](https://developers.home-assistant.io/docs/creating_platform_index/)
+- Keep the gateway Local Server within an isolated LAN/VLAN and allow access only from trusted hosts, including your HA host and (if needed) Ubuntu VM.
+- **HTTP Basic Auth does not encrypt credentials or SMS content.** HTTPS should be used with a valid, trusted certificate; this integration does not disable TLS verification or follow cross-host redirects.
+- Do not publish phone credentials, SMS contents, one-time verification codes, or diagnostic logs that contain them. Home Assistant automations and the Recorder may retain event payloads.
+- For firewall details, credential storage, and privacy, read the [English security guide](docs/SECURITY.md).
 
-Projekt niezależny, niepowiązany z autorami SMS Gateway for Android i Home Assistant.
+## Developers and releases
+
+The project ships with offline Python tests. Release automation runs Python tests, [HACS validation](https://www.hacs.dev/docs/publish/action/), and [Hassfest](https://github.com/home-assistant/actions#hassfest) before publishing a **GitHub Release** when an annotated `vX.Y.Z` tag is pushed. The release includes a manual-install ZIP and SHA-256 checksums. See [RELEASING.md](docs/RELEASING.md) for the exact commands and prerequisites.
+
+```bash
+python -m pip install aiohttp
+python -m unittest discover -s tests -v
+python -m compileall -q custom_components
+```
+
+CI checks and offline tests do **not** replace a live HA + Android test.
+
+## Links
+
+- [Issues](https://github.com/ILoveMyProjects/smsGetaweyBridge/issues)
+- [Releases](https://github.com/ILoveMyProjects/smsGetaweyBridge/releases)
+- [Changelog](CHANGELOG.md)
+- [Polish docs](docs/README_PL.md)
+- [SMS Gateway app](https://github.com/capcom6/android-sms-gateway)
+- [SMS Gateway API](https://capcom6.github.io/android-sms-gateway/)
+
+Independent community project; not affiliated with Home Assistant or SMS Gateway for Android.
